@@ -159,6 +159,24 @@ select { width: auto; padding: 3px 8px; font-size: 20px; }
 .opt { display: flex; gap: 10px; align-items: flex-start; padding: 6px 10px; border: 2px solid var(--line); background: var(--row); cursor: pointer; font-size: 22px; }
 .opt input { margin-top: 4px; accent-color: #8dff9a; flex: none; }
 .opt small { display: block; color: var(--dim); font-size: 18px; }
+/* backgrounds for gate screens */
+.gate.bg { background: linear-gradient(rgba(2,12,5,.45), rgba(2,12,5,.78)), var(--bg-img) center / cover no-repeat fixed; }
+.gate.bg .panel { background: rgba(2,12,5,.86); border: 2px solid var(--line); padding: 20px; box-shadow: 0 0 30px rgba(0,0,0,.6); }
+.gate.bg.ban .panel { border-color: var(--alert); }
+/* glitch look for banned users and the ban screen (static version first, animation only if motion is allowed) */
+.av.gl img { filter: hue-rotate(150deg) saturate(3) contrast(1.4) brightness(.9); }
+.av.gl::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(255,60,80,.35) 0 2px, rgba(0,0,0,0) 2px 5px); mix-blend-mode: screen; }
+.glx { border-color: var(--alert) !important; }
+.glx .txt, .glx .ptitle, .glx .psub, .glx .ct, .glx .cs, .glx .h1 { text-shadow: 2px 0 rgba(255,60,80,.8), -2px 0 rgba(60,240,255,.8); }
+.glbad { text-shadow: 2px 0 rgba(255,60,80,.85), -2px 0 rgba(60,240,255,.85); }
+@media (prefers-reduced-motion: no-preference) {
+  .av.gl img { animation: glimg 2.2s steps(1) infinite; }
+  .glx { animation: glbox 3.4s steps(1) infinite; }
+  .glx .txt, .glx .ptitle, .glx .ct, .glbad { animation: gltxt 2.6s steps(1) infinite; }
+  @keyframes glimg { 0%, 100% { transform: none; } 8% { transform: translate(-3px, 0) skewX(8deg); } 10% { transform: translate(3px, 1px); } 12% { transform: none; } 55% { transform: translate(2px, -1px) scaleX(1.08); } 57% { transform: none; } 80% { transform: translate(-2px, 0); filter: hue-rotate(260deg) saturate(3) contrast(1.4); } 82% { transform: none; } }
+  @keyframes glbox { 0%, 100% { transform: none; } 6% { transform: translateX(-3px); } 7% { transform: translateX(3px); } 8% { transform: none; } 61% { transform: translateX(2px) skewX(-1deg); } 62% { transform: none; } }
+  @keyframes gltxt { 0%, 100% { text-shadow: 2px 0 rgba(255,60,80,.85), -2px 0 rgba(60,240,255,.85); } 40% { text-shadow: -3px 0 rgba(255,60,80,.85), 3px 0 rgba(60,240,255,.85); } 42% { text-shadow: 3px 1px rgba(255,60,80,.85), -3px -1px rgba(60,240,255,.85); } 44% { text-shadow: 2px 0 rgba(255,60,80,.85), -2px 0 rgba(60,240,255,.85); } 78% { text-shadow: 4px 0 rgba(255,60,80,.7), -4px 0 rgba(60,240,255,.7); } 80% { text-shadow: 2px 0 rgba(255,60,80,.85), -2px 0 rgba(60,240,255,.85); } }
+}
 @media (max-width: 700px) {
   body { font-size: 20px; }
   .brand { font-size: 18px; }
@@ -200,6 +218,10 @@ const firebaseConfig = {
 /* ========================================================================================================== */
 
 const DEFAULT_PFP = 'https://cdn.jsdelivr.net/gh/Joeclickavit/VEEFORUMSPFP@main/Smart_thinking!_Sticker.webp';
+const JSD = 'https://cdn.jsdelivr.net/gh/Joeclickavit/jsdelivr1@main/'; // all site images load through jsDelivr
+const BG_LOGIN = JSD + 'Trends_International_Group_Poster.webp';
+const BG_PENDING = JSD + 'Vee_Staff_Only_Area.webp';
+const BG_BAN = JSD + 'EpikGameShow.webp';
 const EMAIL_DOMAIN = '@veeforums.app';
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 const MAX_UPLOAD = 2 * 1024 * 1024;
@@ -212,15 +234,17 @@ const SECTIONS = [
   { id: 'methods', name: 'Methods', desc: 'Share your methods' },
   { id: 'art', name: 'Art', desc: 'Send your art here' },
   { id: 'media', name: 'Media', desc: 'Send pictures here' },
+  { id: 'music', name: 'Music', desc: 'Discuss music' },
   { id: 'memes', name: 'Memes', desc: 'Send memes here' },
   { id: 'offtopic', name: 'Off-Topic', desc: 'Anything else goes here' }
 ];
-const RULES = [
+const DEFAULT_RULES = [
   { id: 'nsfw', text: 'No NSFW', penalty: 'Instant ban', ban: true },
   { id: 'tragedy', text: 'No making fun of tragedies', penalty: 'Timeout and a warning' },
   { id: 'racism', text: 'No racism', penalty: 'Timeout and a warning' },
   { id: 'homophobia', text: 'No homophobia', penalty: 'Timeout and a warning' }
 ];
+let RULES = DEFAULT_RULES.slice(); // replaced by the live list in config/rules once an admin edits it
 const DURS = [['10 minutes', 10 * MIN], ['1 hour', HOUR], ['24 hours', DAY], ['7 days', 7 * DAY]];
 const ROLE_LABEL = { owner: 'OWNER', coowner: 'CO-OWNER', admin: 'ADMIN', mod: 'MOD' };
 
@@ -236,9 +260,11 @@ const safeImg = s => (typeof s === 'string' && /^data:image\/(png|jpe?g|webp|gif
 function ago(t) { const d = Date.now() - t; if (d < MIN) return 'just now'; if (d < HOUR) return Math.floor(d / MIN) + 'm ago'; if (d < DAY) return Math.floor(d / HOUR) + 'h ago'; return Math.floor(d / DAY) + 'd ago'; }
 const dateStr = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 const stamp = t => { const d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
-const secById = id => SECTIONS.find(s => s.id === id);
+const allSections = () => SECTIONS.concat(G.boards);
+const secById = id => allSections().find(s => s.id === id);
 const ruleById = id => RULES.find(r => r.id === id);
-const ruleName = id => id === 'other' ? 'Other' : (ruleById(id) ? ruleById(id).text : id);
+const ruleName = id => id === 'other' ? 'Other' : (ruleById(id) ? ruleById(id).text : '(removed rule)');
+const isBanned = uid => { const u = G.users[uid]; return !!u && u.status === 'banned'; };
 function monthStartMs() { const n = new Date(); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1); }
 function nextWipeMs() { const n = new Date(); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 1); }
 function wipeInfo() {
@@ -250,14 +276,15 @@ const emailFor = name => name.toLowerCase() + EMAIL_DOMAIN;
 /* ---------- state ---------- */
 const G = {
   user: null, me: null, meLoaded: false, users: {}, threads: [], replies: [], repFor: null,
-  reports: [], modLog: [], warnReqs: [], apps: {}, memberKey: null, ready: { users: false, threads: false },
-  alertsInit: false, prevReports: 0, prevPending: 0, prevReqs: 0, purged: false, err: null
+  reports: [], modLog: [], warnReqs: [], apps: {}, boards: [], appeals: [], filterWords: [], myAppeal: null, memberKey: null, ready: { users: false, threads: false },
+  alertsInit: false, prevReports: 0, prevPending: 0, prevReqs: 0, prevAppeals: 0, purged: false, err: null
 };
 const ui = { view: 'home', section: null, threadId: null, composing: false, mode: 'login', layout: 'catalog', staffTab: 'reports', busy: false };
-const pending = { post: null, reply: null };
+const pending = { post: null, reply: null, pfp: null };
+const PFP_PX = 512, PFP_CHARS = 300000; // any file under 2 MB is accepted, then shrunk so it fits in the users list
 let queue = [];
 let M = null; // open modal state
-let unsubs = [], unsubMe = null, unsubReplies = null;
+let unsubs = [], unsubMe = null, unsubReplies = null, unsubAppeal = null;
 
 const configured = !String(firebaseConfig.apiKey).startsWith('PASTE');
 let app_, auth, db;
@@ -277,14 +304,17 @@ const getErr = e => (e && e.code) ? e.code : String(e);
 /* ---------- avatars, names ---------- */
 function av(uid, size, nameFallback) {
   const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
-  const src = DEFAULT_PFP;
+  // Only staff (mod and above) can have a custom picture; everyone else always gets the default.
+  const banned = !!u && u.status === 'banned';
+  const custom = !banned && u && rk(u.role) >= 1 ? safeImg(u.pfp) : null;
+  const src = custom || DEFAULT_PFP;
   const name = (u && u.username) || nameFallback || '?';
-  return `<span class="av" style="--s:${size || 40}px"><b aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</b><img src="${esc(src)}" alt="" onerror="this.remove()"></span>`;
+  return `<span class="av${banned ? ' gl' : ''}" style="--s:${size || 40}px"><b aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</b><img src="${esc(src)}" alt="" onerror="this.remove()"></span>`;
 }
 function badge(role) { return ROLE_LABEL[role] ? `<span class="tag ${role}">${ROLE_LABEL[role]}</span>` : ''; }
 function nameHTML(uid, fallback) {
   const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
-  return `<span class="nm">${esc((u && u.username) || fallback || 'unknown')}</span>${u ? badge(u.role) : ''}`;
+  return `<span class="nm">${esc((u && u.username) || fallback || 'unknown')}</span>${u ? badge(u.role) : ''}${u && u.status === 'banned' ? '<span class="tag admin">BANNED</span>' : ''}`;
 }
 function fmt(t) {
   return esc(t).split('\n').map(line => {
@@ -319,7 +349,7 @@ function readImage(file, maxPx, maxChars, cb) {
   fr.onload = () => {
     const url = fr.result;
     if (file.type === 'image/gif') {
-      if (url.length >= maxChars) return cb('That GIF is too big to store. Use a GIF under about 600 KB, or a PNG, JPG or WEBP.');
+      if (url.length >= maxChars) return cb(`That GIF is too big to store. Use a GIF under about ${Math.floor(maxChars * 0.75 / 1024)} KB, or a PNG, JPG or WEBP.`);
       return cb(null, url);
     }
     const img = new Image();
@@ -351,7 +381,7 @@ const imgPicker = kind => `<div class="row"><label class="btn sm ghost" for="img
 
 /* ---------- listeners ---------- */
 function onErr(name) { return e => { console.error(name, e); if (getErr(e) === 'permission-denied') G.err = 'permission'; softRender(); }; }
-function stopMember() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; G.users = {}; G.threads = []; G.reports = []; G.modLog = []; G.warnReqs = []; G.apps = {}; G.ready = { users: false, threads: false }; G.alertsInit = false; stopReplies(); }
+function stopMember() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; G.users = {}; G.threads = []; G.reports = []; G.modLog = []; G.warnReqs = []; G.apps = {}; G.boards = []; G.appeals = []; G.filterWords = []; RULES = DEFAULT_RULES.slice(); G.ready = { users: false, threads: false }; G.alertsInit = false; stopReplies(); }
 function stopReplies() { if (unsubReplies) { unsubReplies(); unsubReplies = null; } G.replies = []; G.repFor = null; }
 function snapData(d) { return { id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }; }
 function startMember() {
@@ -366,12 +396,23 @@ function startMember() {
       pop('Warning', `You were warned for: ${ruleName(w.rule)}.${w.note ? ' Note from staff: ' + w.note : ''} Keep following the rules or you may be timed out or banned.`, 'bad', '', ch.doc.id);
     });
   }, onErr('warnings')));
+  unsubs.push(onSnapshot(collection(db, 'boards'), s => { G.boards = s.docs.map(snapData).sort((a, b) => ms(a.createdAt) - ms(b.createdAt)); softRender(); }, onErr('boards')));
+  unsubs.push(onSnapshot(doc(db, 'config', 'rules'), s => {
+    const it = s.exists() && Array.isArray(s.data().items) ? s.data().items : null;
+    RULES = it && it.length ? it.map(x => ({ id: String(x.id), text: String(x.text), penalty: String(x.penalty || ''), ban: !!x.ban })) : DEFAULT_RULES.slice();
+    softRender();
+  }, onErr('rules')));
+  unsubs.push(onSnapshot(doc(db, 'config', 'wordfilter'), s => {
+    G.filterWords = s.exists() && Array.isArray(s.data().words) ? s.data().words.map(w => String(w).toLowerCase()).filter(Boolean) : [];
+    softRender();
+  }, onErr('wordfilter')));
   if (isMod()) {
     unsubs.push(onSnapshot(query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100)), s => { G.reports = s.docs.map(snapData); staffAlerts(); softRender(); }, onErr('reports')));
     unsubs.push(onSnapshot(query(collection(db, 'modLog'), orderBy('createdAt', 'desc'), limit(100)), s => { G.modLog = s.docs.map(snapData); softRender(); }, onErr('modLog')));
   }
   if (isAdmin()) {
     unsubs.push(onSnapshot(query(collection(db, 'warnRequests'), orderBy('createdAt', 'desc'), limit(100)), s => { G.warnReqs = s.docs.map(snapData); staffAlerts(); softRender(); }, onErr('warnRequests')));
+    unsubs.push(onSnapshot(query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(100)), s => { G.appeals = s.docs.map(snapData); staffAlerts(); softRender(); }, onErr('appeals')));
     unsubs.push(onSnapshot(collection(db, 'applications'), s => { G.apps = {}; s.forEach(d => { G.apps[d.id] = snapData(d); }); softRender(); }, onErr('applications')));
     if (!G.purged) { G.purged = true; purgeOld().catch(() => {}); setTimeout(() => tidy().catch(() => {}), 8000); }
   }
@@ -390,30 +431,52 @@ function ensureReplies() {
   unsubReplies = onSnapshot(query(collection(db, 'threads', id, 'replies'), orderBy('createdAt', 'asc')), s => { G.replies = s.docs.map(snapData); softRender(); }, onErr('replies'));
 }
 const pendingUsers = () => Object.values(G.users).filter(u => u.status === 'pending').sort((a, b) => ms(a.createdAt) - ms(b.createdAt));
+const APPEAL_MS = 72 * HOUR;
+const appealDue = a => ms(a.createdAt) + APPEAL_MS;
+function openAppeals() { return G.appeals.filter(a => a.status === 'open' && appealDue(a) > Date.now()); }
+function filterHit(text) {
+  const t = String(text).toLowerCase().replace(/[\u200b-\u200d\ufeff]/g, '');
+  for (const w of G.filterWords) {
+    const body = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    if (new RegExp('(^|[^a-z0-9])' + body + '($|[^a-z0-9])').test(t)) return w;
+  }
+  return null;
+}
+function flagPost(tx, hit, o) {
+  if (!hit) return;
+  tx.set(doc(db, 'reports', 'wf_' + o.id), { kind: o.kind, threadId: o.threadId, replyId: o.replyId, targetUid: G.user.uid, targetName: G.me.username, postNo: o.no, excerpt: o.text.slice(0, 300), rule: 'other', details: ('Word filter matched: ' + hit).slice(0, 300), reporterUid: G.user.uid, reporterName: 'Word filter', status: 'open', createdAt: serverTimestamp() });
+}
+function syncAppeal() {
+  const want = !!(G.user && G.me && G.me.status === 'banned');
+  if (want && !unsubAppeal) unsubAppeal = onSnapshot(doc(db, 'appeals', G.user.uid), s => { G.myAppeal = s.exists() ? snapData(s) : null; softRender(); }, e => console.error('appeal', e));
+  else if (!want && unsubAppeal) { unsubAppeal(); unsubAppeal = null; G.myAppeal = null; }
+}
 function openReports() { return G.reports.filter(r => r.status === 'open'); }
 function pendingReqs() { return G.warnReqs.filter(r => r.status === 'pending'); }
 function staffAlerts() {
   if (!G.ready.users) return;
-  const r = isMod() ? openReports().length : 0, p = isAdmin() ? pendingUsers().length : 0, q = isAdmin() ? pendingReqs().length : 0;
+  const r = isMod() ? openReports().length : 0, p = isAdmin() ? pendingUsers().length : 0, q = isAdmin() ? pendingReqs().length : 0, ap = isAdmin() ? openAppeals().length : 0;
   if (G.alertsInit) {
     if (r > G.prevReports) pop('New report', 'A member reported a post. Open Staff, then Reports.');
     if (p > G.prevPending) pop('New application', 'Someone is waiting for approval. Open Staff, then Approvals.');
     if (q > G.prevReqs) pop('Warning request', 'A mod sent a warning request. Open Staff, then Warn requests.');
+    if (ap > G.prevAppeals) pop('New appeal', 'A banned member sent an appeal. Open Staff, then Appeals. It expires in 72 hours.');
   }
-  G.prevReports = r; G.prevPending = p; G.prevReqs = q; G.alertsInit = true;
+  G.prevReports = r; G.prevPending = p; G.prevReqs = q; G.prevAppeals = ap; G.alertsInit = true;
 }
 
 /* ---------- auth ---------- */
 if (configured) {
   onAuthStateChanged(auth, user => {
     if (unsubMe) { unsubMe(); unsubMe = null; }
+    if (unsubAppeal) { unsubAppeal(); unsubAppeal = null; } G.myAppeal = null;
     stopMember(); G.memberKey = null; G.user = user; G.me = null; G.meLoaded = false; G.err = null; G.purged = false;
     ui.view = 'home'; ui.section = null; ui.threadId = null; ui.composing = false;
     if (!user) { render(); return; }
     unsubMe = onSnapshot(doc(db, 'users', user.uid), s => {
       G.meLoaded = true;
       G.me = s.exists() ? snapData(s) : null;
-      syncMember(); softRender();
+      syncMember(); syncAppeal(); softRender();
     }, e => { console.error(e); G.meLoaded = true; G.err = 'account'; render(); });
     render();
   });
@@ -463,7 +526,7 @@ function setupHTML() {
 }
 function gateHTML() {
   const login = ui.mode === 'login';
-  return `<div class="gate gut"><div class="panel">
+  return `<div class="gate bg gut" style="--bg-img:url('${BG_LOGIN}')"><div class="panel">
     <div class="lock"><span class="brand" style="cursor:default;font-size:30px">VEE-FORUMS</span><span class="desc">Log in or request an account to read and post.</span></div>
     <div class="seg"><button type="button" data-action="mode" data-mode="login" aria-pressed="${login}">Log in</button><button type="button" data-action="mode" data-mode="signup" aria-pressed="${!login}">Request account</button></div>
     <form class="form" data-form="${login ? 'login' : 'signup'}" autocomplete="off">
@@ -475,21 +538,32 @@ function gateHTML() {
       <div class="row"><button class="btn" type="submit">${login ? 'Log in' : 'Send application'}</button></div>
     </form></div></div>`;
 }
-function statusHTML(title, body, tone) {
-  return `<div class="gate gut"><div class="panel"><div class="lock"><span class="brand" style="cursor:default;font-size:30px">VEE-FORUMS</span></div>
-    <div class="box ${tone === 'bad' ? 'red' : 'gold'}"><span class="h2 ${tone === 'bad' ? 'bad' : 'warn'}">${esc(title)}</span>${body}</div>
+function statusHTML(title, body, tone, bg, glitch) {
+  return `<div class="gate${bg ? ' bg' : ''}${glitch ? ' ban' : ''} gut"${bg ? ` style="--bg-img:url('${bg}')"` : ''}><div class="panel"><div class="lock"><span class="brand" style="cursor:default;font-size:30px">VEE-FORUMS</span></div>
+    <div class="box ${tone === 'bad' ? 'red' : 'gold'}${glitch ? ' glx' : ''}"><span class="h2 ${tone === 'bad' ? 'bad' : 'warn'}${glitch ? ' glbad' : ''}">${esc(title)}</span>${body}</div>
     <div class="row"><button type="button" class="btn sm ghost" data-action="logout">Log out</button></div></div></div>`;
+}
+function appealHTML() {
+  const a = G.myAppeal, now = Date.now();
+  if (a && a.status === 'open' && appealDue(a) > now) {
+    const h = Math.max(1, Math.ceil((appealDue(a) - now) / HOUR));
+    return `<span class="warn">Appeal sent ${esc(stamp(ms(a.createdAt)))}. An admin must decide within 72 hours (about ${h}h left) or it expires.</span><span class="fine">This page updates by itself.</span>`;
+  }
+  if (a && a.status === 'denied') return `<span>Your appeal was denied${a.handledByName ? ' by ' + esc(a.handledByName) : ''}. The ban stays.</span>`;
+  const note = a && a.status === 'open' ? '<span class="warn">Your last appeal expired without a decision. You can send a new one.</span>' : '';
+  return note + `<form class="form" data-form="appeal" style="border:0;padding:0;background:none"><label class="l" for="ap-text">Appeal this ban</label><textarea id="ap-text" minlength="20" maxlength="500" required placeholder="Explain why the ban should be lifted."></textarea>
+    <div class="row"><button class="btn sm" type="submit">Send appeal</button></div><div class="fine">One appeal at a time. It expires 72 hours after you send it if no admin has decided.</div></form>`;
 }
 function pendingHTML() {
   const due = ms(G.me.createdAt) + 72 * HOUR;
   const hrs = Math.max(0, Math.ceil((due - Date.now()) / HOUR));
   return statusHTML('Waiting for admin approval',
-    `<span>Your application was sent to the admins. A decision is promised within 72 hours of ${esc(stamp(ms(G.me.createdAt)))}${hrs > 0 ? ` (about ${hrs}h left)` : ''}.</span><span class="fine">This page updates by itself the moment you are approved.</span>`);
+    `<span>Your application was sent to the admins. A decision is promised within 72 hours of ${esc(stamp(ms(G.me.createdAt)))}${hrs > 0 ? ` (about ${hrs}h left)` : ''}.</span><span class="fine">This page updates by itself the moment you are approved.</span>`, '', BG_PENDING);
 }
 function shell(main) {
   const w = wipeInfo();
   const reportsN = isMod() ? openReports().length : 0;
-  const adminN = isAdmin() ? pendingUsers().length + pendingReqs().length : 0;
+  const adminN = isAdmin() ? pendingUsers().length + pendingReqs().length + openAppeals().length : 0;
   const staffN = reportsN + adminN;
   const nu = newestUser();
   const timeoutBanner = isTimedOut() ? `<div class="stripe">You are timed out until ${esc(stamp(timeoutMs()))}. You can read but not post, reply or bump.</div>` : '';
@@ -504,7 +578,7 @@ function shell(main) {
     <div class="foot"><span>Threads <b>${G.threads.length}</b></span><span>Users <b>${Object.values(G.users).filter(u => u.status === 'approved').length}</b></span>${nu ? `<span>Newest user <b>${esc(nu.username)}</b></span>` : ''}<span>Board wipes <b>${esc(w.text)}</b> (${w.days} ${w.days === 1 ? 'day' : 'days'})</span></div></main>`;
 }
 function newestUser() {
-  const a = Object.values(G.users).filter(u => u.status === 'approved' && u.role !== 'owner').sort((x, y) => ms(y.createdAt) - ms(x.createdAt));
+  const a = Object.values(G.users).filter(u => u.status === 'approved' && rk(u.role) === 0).sort((x, y) => ms(y.createdAt) - ms(x.createdAt));
   return a[0] || null;
 }
 const sortedThreads = sec => G.threads.filter(t => !sec || t.section === sec).sort((a, b) => ms(b.bumpedAt) - ms(a.bumpedAt) || ms(b.createdAt) - ms(a.createdAt));
@@ -513,7 +587,7 @@ function rankOf(t) { return sortedThreads(t.section).findIndex(x => x.id === t.i
 const rankHTML = before => `<div class="rank"><span>#${before}</span><span>&gt;&gt;</span><span>#1</span></div>`;
 
 function postRow(t, i, showBoard) {
-  return `<article class="post${i === 0 ? ' top1' : ''}"><button type="button" class="rowmain" data-action="open" data-id="${t.id}">${av(t.authorUid, 44, t.authorName)}
+  return `<article class="post${i === 0 ? ' top1' : ''}${isBanned(t.authorUid) ? ' glx' : ''}"><button type="button" class="rowmain" data-action="open" data-id="${t.id}">${av(t.authorUid, 44, t.authorName)}
     <span style="min-width:0"><span class="ptitle">${esc(t.title)}${safeImg(t.image) ? ' <span class="tag">IMG</span>' : ''}</span>
     <span class="psub">${showBoard ? esc(secById(t.section) ? secById(t.section).name : '') + ' · ' : ''}${esc(t.authorName)} · ${t.replyCount} ${t.replyCount === 1 ? 'reply' : 'replies'}</span></span></button>
     <div class="rowside"><span class="time">${ago(ms(t.bumpedAt))}</span><button type="button" class="btn sm" data-action="bump" data-id="${t.id}" aria-label="Bump ${esc(t.title)}">Bump</button></div></article>`;
@@ -522,7 +596,7 @@ function homeHTML() {
   const w = wipeInfo(), nu = newestUser(), recent = sortedThreads().slice(0, 6);
   const nuBox = nu ? `<div class="newest" style="flex:1 1 320px">${av(nu.id, 64)}<div><span class="label">Newest user</span><div class="name">${esc(nu.username)}</div><div class="desc">Joined ${ago(ms(nu.createdAt))}</div></div></div>` : '';
   return `<div><h1 class="h1">Vee-Forums</h1><div class="desc">Reply or bump a thread and it jumps to the top. Everything is deleted at the start of each month. Read the <button type="button" class="bl" style="color:var(--amber);padding:0;font-family:inherit;text-transform:none;letter-spacing:0;font-size:inherit" data-action="rules">rules</button> before you post.</div></div>
-    <div class="tbl"><div class="hd">Boards</div>${SECTIONS.map(s => {
+    <div class="tbl"><div class="hd">Boards</div>${allSections().map(s => {
       const ps = sortedThreads(s.id), top = ps[0], rep = ps.reduce((a, p) => a + (p.replyCount || 0), 0);
       return `<button type="button" class="brow" data-action="section" data-id="${s.id}"><span><span class="bn">${esc(s.name)}</span><span class="desc">${esc(s.desc)}</span></span><span class="num hide">${ps.length} threads / ${rep} replies</span><span class="num">${top ? ago(ms(top.bumpedAt)) : 'empty'}</span></button>`;
     }).join('')}</div>
@@ -531,7 +605,7 @@ function homeHTML() {
 }
 function catCard(t, i) {
   const img = safeImg(t.image);
-  return `<article class="cat${i === 0 ? ' top1' : ''}"><button type="button" class="catmain" data-action="open" data-id="${t.id}"><span class="thumb">${img ? `<img src="${img}" alt="">` : av(t.authorUid, 64, t.authorName)}</span>
+  return `<article class="cat${i === 0 ? ' top1' : ''}${isBanned(t.authorUid) ? ' glx' : ''}"><button type="button" class="catmain" data-action="open" data-id="${t.id}"><span class="thumb">${img ? `<img src="${img}" alt="">` : av(t.authorUid, 64, t.authorName)}</span>
     <span class="cstats">R: ${t.replyCount} / B: ${t.bumps}</span><span class="ct">${esc(t.title)}</span><span class="cs">${esc(t.body)}</span>
     <span class="cby">${av(t.authorUid, 22, t.authorName)}${nameHTML(t.authorUid, t.authorName)}<span>· ${ago(ms(t.bumpedAt))}</span></span></button>
     <button type="button" class="btn sm catbump" data-action="bump" data-id="${t.id}" aria-label="Bump ${esc(t.title)}">Bump</button></article>`;
@@ -554,8 +628,9 @@ function postBox(o) {
   const img = safeImg(o.image);
   const mine = o.authorUid === G.user.uid;
   const acts = (!mine ? `<button type="button" class="btn sm ghost" data-action="report" data-kind="${o.kind}" data-rid="${o.id || ''}">Report</button>` : '') +
-    (isMod() ? `<button type="button" class="btn sm danger" data-action="delpost" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>` : '');
-  return `<div class="pb${o.op ? ' op' : ''}" id="no-${o.no}"><div class="ph">${av(o.authorUid, 26, o.authorName)}${nameHTML(o.authorUid, o.authorName)}<span>${stamp(ms(o.createdAt))}</span>
+    (mine ? `<button type="button" class="btn sm danger" data-action="selfdel" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>`
+      : isMod() ? `<button type="button" class="btn sm danger" data-action="delpost" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>` : '');
+  return `<div class="pb${o.op ? ' op' : ''}${isBanned(o.authorUid) ? ' glx' : ''}" id="no-${o.no}"><div class="ph">${av(o.authorUid, 26, o.authorName)}${nameHTML(o.authorUid, o.authorName)}<span>${stamp(ms(o.createdAt))}</span>
     <button type="button" class="no" data-action="quote" data-no="${o.no}" aria-label="Quote post ${o.no}">No.${o.no}</button>${o.op ? '<span class="tag dim">OP</span>' : ''}<span class="acts">${acts}</span></div>
     <div class="pbody">${img ? `<button type="button" class="imgbtn" data-action="zoom" aria-label="Toggle image size"><img src="${img}" alt="Image posted by ${esc(o.authorName)}"></button>` : ''}${o.title ? `<div class="h1" style="font-size:22px;margin-bottom:6px">${esc(o.title)}</div>` : ''}<div class="txt">${fmt(o.text)}</div></div></div>`;
 }
@@ -569,25 +644,30 @@ function threadHTML() {
     `<form class="form" data-form="reply"><label class="l" for="r-text">Reply (this bumps the thread to the top)</label><textarea id="r-text" maxlength="800" required style="min-height:90px" ${isTimedOut() ? 'disabled' : ''}></textarea>${imgPicker('reply')}
     <div class="row"><button class="btn" type="submit" ${isTimedOut() ? 'disabled' : ''}>Post reply</button><span class="fine">Click a post number to quote it. Start a line with &gt; for green text.</span></div></form>`;
 }
-function userCard(u, i) {
-  return `<div class="user">${av(u.id, 44)}<div class="nm">${esc(u.username)} ${badge(u.role)}${i === 0 && u.role !== 'owner' ? ' <span class="tag">NEW</span>' : ''}<div class="joined">Joined ${dateStr(ms(u.createdAt))}</div></div></div>`;
+function userCard(u, i, markNew) {
+  return `<div class="user">${av(u.id, 44)}<div class="nm">${esc(u.username)} ${badge(u.role)}${markNew && i === 0 ? ' <span class="tag">NEW</span>' : ''}<div class="joined">Joined ${dateStr(ms(u.createdAt))}</div></div></div>`;
 }
 function usersHTML() {
   const all = Object.values(G.users).filter(u => u.status === 'approved');
   const staff = all.filter(u => rk(u.role) >= 1).sort((a, b) => rk(b.role) - rk(a.role) || a.username.localeCompare(b.username));
-  const members = all.filter(u => u.role !== 'owner').sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+  const members = all.filter(u => rk(u.role) === 0).sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
   const nu = newestUser();
   return `<h1 class="h1">Users</h1>${nu ? `<div class="newest">${av(nu.id, 72)}<div><span class="label">Newest user</span><div class="name">${esc(nu.username)}</div><div class="desc">Joined ${ago(ms(nu.createdAt))}</div></div></div>` : ''}
     <span class="label">Staff</span><div class="users">${staff.map(userCard).join('')}</div>
-    <span class="label">${members.length} members, newest first</span><div class="users">${members.map(userCard).join('')}</div>`;
+    <span class="label">${members.length} members, newest first</span><div class="users">${members.map((u, i) => userCard(u, i, true)).join('')}</div>`;
 }
 function profileHTML() {
   const u = G.me;
   return `<h1 class="h1">Your profile</h1><div class="form"><div class="row">${av(u.id, 96)}<div><div style="font-size:30px">${esc(u.username)} ${badge(u.role)}</div><div class="desc">Joined ${dateStr(ms(u.createdAt))}</div></div></div>
-    <div class="fine">Everyone uses the same profile picture. Custom pictures are turned off.</div></div>`;
+    ${isMod() ? `<span class="label">Staff profile picture</span>${imgPicker('pfp')}
+      <div class="row"><button type="button" class="btn sm" data-action="savepfp">Save picture</button></div>
+      <div class="fine">Staff only. Pick any image under 2 MB; it is shrunk to ${PFP_PX}px to fit. Members all use the default picture.</div>`
+      : '<div class="fine">Everyone uses the same profile picture. Custom pictures are for staff only.</div>'}
+    ${safeImg(u.pfp) ? '<div class="row"><button type="button" class="btn sm ghost" data-action="resetpfp">Reset to default picture</button></div>' : ''}</div>`;
 }
 function rulesHTML() {
   return `<h1 class="h1">Rules</h1><div class="desc">Staff pick the rule that was broken every time they remove a post.</div>
+    ${isAdmin() ? '<div class="row"><button type="button" class="btn sm" data-action="editrules">Edit rules and penalties</button><span class="fine">Admins, co-owners and the owner can change these.</span></div>' : ''}
     <div class="rulelist">${RULES.map((r, i) => `<div class="rule"><span class="rt">${i + 1}. ${esc(r.text)}</span><span class="tag ${r.ban ? 'admin' : ''}">${esc(r.penalty)}</span></div>`).join('')}</div>
     <div class="box" style="max-width:760px"><span class="h2">How enforcement works</span>
     <span>Mods remove posts, time members out, and ban for NSFW. After removing a post a mod can ask an admin to issue a warning. Admins warn only when a mod sends a request, and only once per request. Everyone can report a post with the Report button and a mod will review it.</span>
@@ -596,7 +676,7 @@ function rulesHTML() {
 
 /* ---- staff ---- */
 function staffTabs() {
-  const tabs = [['reports', 'Reports', true, isMod() ? openReports().length : 0], ['requests', 'Warn requests', isAdmin(), isAdmin() ? pendingReqs().length : 0], ['approvals', 'Approvals', isAdmin(), isAdmin() ? pendingUsers().length : 0], ['members', 'Members', true, 0], ['log', 'Mod log', true, 0]];
+  const tabs = [['reports', 'Reports', true, isMod() ? openReports().length : 0], ['requests', 'Warn requests', isAdmin(), isAdmin() ? pendingReqs().length : 0], ['approvals', 'Approvals', isAdmin(), isAdmin() ? pendingUsers().length : 0], ['members', 'Members', true, 0], ['appeals', 'Appeals', isAdmin(), isAdmin() ? openAppeals().length : 0], ['filter', 'Word filter', isAdmin(), 0], ['boards', 'Boards', true, 0], ['log', 'Mod log', true, 0]];
   return `<div class="subtabs">${tabs.filter(t => t[2]).map(t => `<button type="button" class="btn sm ${ui.staffTab === t[0] ? '' : 'ghost'}" data-action="stafftab" data-tab="${t[0]}" aria-pressed="${ui.staffTab === t[0]}">${t[1]}${t[3] ? ' (' + t[3] + ')' : ''}</button>`).join('')}</div>`;
 }
 function reportsHTML() {
@@ -633,14 +713,47 @@ function membersHTML() {
   const list = Object.values(G.users).filter(u => u.id !== G.user.uid && u.role !== 'owner' && (u.status === 'approved' || u.status === 'banned')).sort((a, b) => rk(b.role) - rk(a.role) || a.username.localeCompare(b.username));
   return `<span class="label">${list.length} members</span><div class="list">${list.map(u => {
     const can = actOn(u.role), to = u.timeoutUntil ? ms(u.timeoutUntil) : 0, timed = to > Date.now();
-    return `<div class="item"><div class="row">${av(u.id, 36)}<span class="h2">${esc(u.username)}</span>${badge(u.role)}${u.status === 'banned' ? '<span class="tag admin">BANNED</span>' : ''}${timed ? `<span class="tag warn">TIMEOUT to ${esc(stamp(to))}</span>` : ''}</div>
+    return `<div class="item"><div class="row">${av(u.id, 36)}<span class="h2">${esc(u.username)}</span>${badge(u.role)}${u.status === 'banned' ? `<span class="tag admin">BANNED</span>${u.banReason ? `<span class="fine">Reason: ${esc(u.banReason)}</span>` : ''}` : ''}${timed ? `<span class="tag warn">TIMEOUT to ${esc(stamp(to))}</span>` : ''}</div>
       ${can ? `<div class="row">
         <select id="to-${u.id}" aria-label="Timeout length">${DURS.map(d => `<option value="${d[1]}">${d[0]}</option>`).join('')}</select><button type="button" class="btn sm" data-action="timeout" data-uid="${u.id}">Time out</button>
         ${isAdmin() && timed ? `<button type="button" class="btn sm ghost" data-action="untimeout" data-uid="${u.id}">Remove timeout</button>` : ''}
-        ${isAdmin() ? (u.status === 'banned' ? `<button type="button" class="btn sm ghost" data-action="unban" data-uid="${u.id}">Unban</button>` : `<button type="button" class="btn sm danger" data-action="ban" data-uid="${u.id}">Ban</button>`) : ''}
+        ${isAdmin() ? (u.status === 'banned' ? `<button type="button" class="btn sm ghost" data-action="editban" data-uid="${u.id}">Edit ban reason</button><button type="button" class="btn sm ghost" data-action="unban" data-uid="${u.id}">Unban</button>` :`<button type="button" class="btn sm danger" data-action="ban" data-uid="${u.id}">Ban</button>`) : ''}
         ${isOwnerTier() && u.status === 'approved' ? `<select id="role-${u.id}" aria-label="Role">${['user', 'mod', 'admin', 'coowner'].map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r === 'user' ? 'Member' : r === 'coowner' ? 'Co-owner' : r[0].toUpperCase() + r.slice(1)}</option>`).join('')}</select><button type="button" class="btn sm" data-action="setrole" data-uid="${u.id}">Set rank</button><button type="button" class="btn sm danger" data-action="warnnow" data-uid="${u.id}">Warn</button>` : ''}
       </div>` : '<div class="fine">Equal or higher rank. You cannot act on this member.</div>'}</div>`;
   }).join('')}</div>`;
+}
+function appealsHTML() {
+  const now = Date.now();
+  const live = G.appeals.filter(a => a.status === 'open' && appealDue(a) > now);
+  const lapsed = G.appeals.filter(a => a.status === 'open' && appealDue(a) <= now).slice(0, 15);
+  const denied = G.appeals.filter(a => a.status === 'denied').slice(0, 15);
+  const card = (a, isLive) => {
+    const u = userOf(a.id), tag = isLive ? 'EXPIRES ' + stamp(appealDue(a)) : a.status === 'denied' ? 'DENIED' : 'EXPIRED';
+    return `<div class="item ${isLive ? 'open' : ''}"><div class="row"><span class="h2">${esc(a.username)}</span><span class="fine">sent ${ago(ms(a.createdAt))}</span><span class="tag ${isLive ? 'dim' : 'admin'}">${esc(tag)}</span></div>
+      ${u && u.banReason ? `<div class="fine">Ban reason: ${esc(u.banReason)}</div>` : ''}<div class="q">${esc(a.text)}</div>
+      ${isLive ? (u && actOn(u.role) ? `<div class="row"><button type="button" class="btn sm" data-action="appealyes" data-uid="${esc(a.id)}">Approve and unban</button><button type="button" class="btn sm danger" data-action="appealno" data-uid="${esc(a.id)}">Deny</button></div>` : '<div class="fine">You cannot act on this member.</div>') : (a.status === 'denied' ? `<div class="fine">by ${esc(a.handledByName || '')}</div>` : '<div class="fine">Nobody decided in time. The member can send a new appeal.</div>')}</div>`;
+  };
+  return `<span class="label">${live.length} open appeals (each expires 72 hours after it was sent)</span>${live.length ? live.map(a => card(a, true)).join('') : '<div class="empty">No open appeals.</div>'}
+    ${lapsed.length ? `<span class="label">Expired</span>${lapsed.map(a => card(a, false)).join('')}` : ''}${denied.length ? `<span class="label">Denied</span>${denied.map(a => card(a, false)).join('')}` : ''}`;
+}
+function filterHTML() {
+  return `<span class="label">Word filter</span><form class="form" data-form="filter"><label class="l" for="wf-words">One word or phrase per line</label>
+    <textarea id="wf-words" maxlength="6000" style="min-height:180px">${esc(G.filterWords.join('\n'))}</textarea>
+    <div class="row"><button class="btn" type="submit">Save list</button></div>
+    <div class="fine">A post or reply containing a listed word is still posted, but a report is filed automatically (reporter: Word filter) so a mod can review it. It ignores capital letters and matches whole words and phrases. Up to 200 entries of 40 characters. Members can technically read this list.</div></form>`;
+}
+function boardsHTML() {
+  const mine = G.boards;
+  return `<span class="label">Create a board</span>
+    <form class="form" data-form="board" autocomplete="off"><label class="l" for="b-name">Name (3 to 24 characters)</label><input id="b-name" type="text" maxlength="24" required>
+    <label class="l" for="b-desc">Short description</label><input id="b-desc" type="text" maxlength="60" required>
+    <div class="row"><button class="btn" type="submit">Create board</button><span class="fine">New boards show up on the home page for everyone.</span></div></form>
+    <span class="label">${mine.length} custom ${mine.length === 1 ? 'board' : 'boards'}</span>
+    ${mine.length ? `<div class="list">${mine.map(b => {
+      const n = G.threads.filter(t => t.section === b.id).length;
+      return `<div class="item"><div class="row"><span class="h2">${esc(b.name)}</span><span class="fine">${esc(b.desc)}</span><span class="fine">${n} ${n === 1 ? 'thread' : 'threads'} · by ${esc(b.createdByName || '')}</span></div>
+        ${isAdmin() ? `<div class="row"><button type="button" class="btn sm danger" data-action="rmboard" data-id="${esc(b.id)}" ${n ? 'disabled' : ''}>Remove board</button>${n ? '<span class="fine">Only empty boards can be removed.</span>' : ''}</div>` : ''}</div>`;
+    }).join('')}</div>` : '<div class="empty">No custom boards yet. The built-in boards cannot be removed.</div>'}`;
 }
 function logHTML() {
   return `<span class="label">Latest staff actions</span>${G.modLog.length ? `<div class="list">${G.modLog.map(l => `<div class="item"><div class="row"><span class="tag dim">${esc(l.type.toUpperCase())}</span><span>${esc(l.byName)} → ${esc(l.targetName || '')}</span><span class="fine">${ago(ms(l.createdAt))}</span></div>${l.rule ? `<div class="fine">Rule: ${esc(ruleName(l.rule))}${l.postNo ? ' · post No.' + esc(l.postNo) : ''}</div>` : ''}${l.detail ? `<div class="fine">${esc(l.detail)}</div>` : ''}${l.note ? `<div class="fine">Note: ${esc(l.note)}</div>` : ''}</div>`).join('')}</div>` : '<div class="empty">No actions yet.</div>'}`;
@@ -649,12 +762,13 @@ function staffHTML() {
   if (!isMod()) { ui.view = 'home'; return homeHTML(); }
   if (ui.staffTab === 'requests' && !isAdmin()) ui.staffTab = 'reports';
   if (ui.staffTab === 'approvals' && !isAdmin()) ui.staffTab = 'reports';
-  const body = { reports: reportsHTML, requests: requestsHTML, approvals: approvalsHTML, members: membersHTML, log: logHTML }[ui.staffTab]();
+  if ((ui.staffTab === 'appeals' || ui.staffTab === 'filter') && !isAdmin()) ui.staffTab = 'reports';
+  const body = { reports: reportsHTML, requests: requestsHTML, approvals: approvalsHTML, members: membersHTML, boards: boardsHTML, appeals: appealsHTML, filter: filterHTML, log: logHTML }[ui.staffTab]();
   return `<h1 class="h1">Staff</h1>${staffTabs()}${isAdmin() ? `<div class="row"><button type="button" class="btn sm ghost" data-action="purge">Clean up old data</button><span class="fine">This also runs by itself when an admin opens the site. It removes last month's posts, threads past the newest ${MAX_THREADS}, and finished reports and requests older than 30 days.</span></div>` : ''}${body}`;
 }
 
 function render(keepPending) {
-  if (!keepPending) { pending.post = null; pending.reply = null; }
+  if (!keepPending) { pending.post = null; pending.reply = null; pending.pfp = null; }
   if (!configured) { $app.innerHTML = setupHTML(); return; }
   if (!G.user) { $app.innerHTML = gateHTML(); return; }
   if (G.err === 'account') { $app.innerHTML = statusHTML('Could not load your account', '<span>Check your internet and reload the page.</span>', 'bad'); return; }
@@ -662,7 +776,7 @@ function render(keepPending) {
   if (!G.me) { $app.innerHTML = statusHTML('Finishing your account', '<span>Your login exists but your profile was not created. Log out and request the account again, or ask an admin.</span>', 'bad'); return; }
   if (G.me.status === 'pending') { $app.innerHTML = pendingHTML(); return; }
   if (G.me.status === 'denied') { $app.innerHTML = statusHTML('Application not approved', '<span>Staff did not approve this account. You cannot post or read the forums.</span>', 'bad'); return; }
-  if (G.me.status === 'banned') { $app.innerHTML = statusHTML('Account banned', '<span>This account was banned for breaking the rules.</span>', 'bad'); return; }
+  if (G.me.status === 'banned') { $app.innerHTML = statusHTML('Account banned', '<span>This account was banned for breaking the rules.</span>' + (G.me.banReason ? `<span>Reason: ${esc(G.me.banReason)}</span>` : '') + appealHTML(), 'bad', BG_BAN, true); return; }
   ensureReplies();
   let main;
   switch (ui.view) {
@@ -679,7 +793,7 @@ function render(keepPending) {
 function softRender() {
   const a = document.activeElement;
   const typing = a && a.matches && a.matches('textarea, input[type=text], input[type=password]') && a.value && $app.contains(a);
-  if (typing || pending.post || pending.reply || M) return;
+  if (typing || pending.post || pending.reply || pending.pfp || M) return;
   render(true);
 }
 function go(view, sec) { ui.view = view; if (sec !== undefined) ui.section = sec; ui.composing = false; render(); window.scrollTo(0, 0); }
@@ -708,6 +822,7 @@ async function doNewPost() {
       const c = await tx.get(counter), no = c.data().n + 1;
       tx.update(counter, { n: no });
       tx.set(ref, { section: ui.section, title, body, authorUid: G.user.uid, authorName: G.me.username, no, image: pending.post, createdAt: serverTimestamp(), bumpedAt: serverTimestamp(), bumps: 0, replyCount: 0 });
+      flagPost(tx, filterHit(title + '\n' + body), { id: ref.id, kind: 'thread', threadId: ref.id, replyId: null, no, text: title + ' - ' + body });
     });
     ui.composing = false; pending.post = null; render();
     pop('Posted', `Your thread is first in ${secById(ui.section).name}.`);
@@ -731,6 +846,7 @@ async function doReply() {
       tx.update(counter, { n: no });
       tx.update(tref, { bumpedAt: serverTimestamp(), replyCount: th.data().replyCount + 1 });
       tx.set(rref, { authorUid: G.user.uid, authorName: G.me.username, no, text, image: pending.reply, createdAt: serverTimestamp() });
+      flagPost(tx, filterHit(text), { id: rref.id, kind: 'reply', threadId: t.id, replyId: rref.id, no, text });
     });
     pending.reply = null; render();
     if (before === 1) pop('Reply posted', `The thread was already on top of ${secById(t.section).name}.`);
@@ -781,12 +897,12 @@ async function executeDelete() {
   ui.busy = true;
   try {
     const b = writeBatch(db);
-    if (p.replyId) b.delete(doc(db, 'threads', p.threadId, 'replies', p.replyId));
+    if (p.replyId) { b.delete(doc(db, 'threads', p.threadId, 'replies', p.replyId)); b.update(doc(db, 'threads', p.threadId), { replyCount: increment(-1) }); }
     else { const rs = await getDocs(collection(db, 'threads', p.threadId, 'replies')); rs.forEach(d => b.delete(d.ref)); b.delete(doc(db, 'threads', p.threadId)); }
     logDoc(b, 'delete', target || { id: p.authorUid, username: p.authorName }, { rule: rule.id, note, postNo: p.no, detail: p.replyId ? 'Reply removed' : 'Thread removed' });
     let outcome = 'Deleted (' + rule.text + ')';
     if (can && rule.ban) {
-      b.update(doc(db, 'users', target.id), { status: 'banned' });
+      b.update(doc(db, 'users', target.id), { status: 'banned', banReason: rule.text.slice(0, 200) });
       logDoc(b, 'ban', target, { rule: rule.id, note, postNo: p.no, detail: 'Instant ban for NSFW' });
       outcome += ', user banned';
     } else if (can) {
@@ -826,6 +942,32 @@ function renderModal() {
       ${RULES.concat([{ id: 'other', text: 'Something else' }]).map(r => `<label class="opt"><input type="radio" name="rule" value="${r.id}" ${M.rule === r.id ? 'checked' : ''}><span>${esc(r.text)}</span></label>`).join('')}
       <label class="l label" for="m-note">Anything else the mods should know (optional)</label><textarea id="m-note" maxlength="300"></textarea>
       <div class="row"><button class="btn" type="submit">Send report</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
+    return;
+  }
+  if (M.kind === 'selfdelete') {
+    const p = M.post;
+    $modal.innerHTML = `<form class="modal bad" data-form="selfdelete"><h2 class="h1" style="font-size:22px">Delete your ${p.replyId ? 'reply' : 'thread'} No.${esc(p.no)}?</h2>
+      <div class="fine">This cannot be undone.${p.replyId ? '' : ' Replies from other members are deleted with it.'}</div>
+      <div style="border-left:3px solid var(--line);padding-left:10px;overflow-wrap:anywhere">${esc(p.text.slice(0, 200))}</div>
+      <div class="row"><button class="btn danger" type="submit">Delete</button><button type="button" class="btn ghost" data-action="closemodal">Keep it</button></div></form>`;
+    return;
+  }
+  if (M.kind === 'ban') {
+    const u = userOf(M.uid);
+    $modal.innerHTML = `<form class="modal bad" data-form="ban"><h2 class="h1" style="font-size:22px">${M.edit ? 'Edit ban reason for ' : 'Ban '}${esc(u ? u.username : '')}</h2>
+      <div class="fine">The user sees this reason on their ban screen.</div>
+      ${RULES.concat([{ id: 'other', text: 'Something else' }]).map(r => `<label class="opt"><input type="radio" name="rule" value="${esc(r.id)}" ${M.rule === r.id ? 'checked' : ''}><span>${esc(r.text)}</span></label>`).join('')}
+      <label class="label" for="m-note">Details (optional if you picked a rule)</label><textarea id="m-note" maxlength="150">${M.edit && u && u.banReason ? esc(u.banReason) : ''}</textarea>
+      <div class="row"><button class="btn danger" type="submit">${M.edit ? 'Save reason' : 'Ban'}</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
+    return;
+  }
+  if (M.kind === 'rules') {
+    $modal.innerHTML = `<form class="modal" data-form="rulesedit"><h2 class="h1" style="font-size:22px">Edit rules</h2>
+      <div class="fine">Tick Instant ban for rules that ban at once. Rows left blank are dropped. Past reports and logs keep the wording they were filed with only while the rule still exists.</div>
+      ${M.items.map((r, i) => `<div class="box" data-ri="${i}"><input type="text" data-f="text" style="min-height:0" maxlength="80" value="${esc(r.text)}" placeholder="Rule" aria-label="Rule ${i + 1}"><input type="text" data-f="penalty" style="min-height:0" maxlength="60" value="${esc(r.penalty)}" placeholder="Penalty" aria-label="Penalty for rule ${i + 1}">
+        <label class="chk"><input type="checkbox" data-f="ban" ${r.ban ? 'checked' : ''}>Instant ban</label><div class="row"><button type="button" class="btn sm danger" data-action="rmrule" data-i="${i}">Remove</button></div></div>`).join('')}
+      <div class="row"><button type="button" class="btn sm ghost" data-action="addrule" ${M.items.length >= 12 ? 'disabled' : ''}>Add rule</button><span class="fine">Up to 12 rules.</span></div>
+      <div class="row"><button class="btn" type="submit">Save rules</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
     return;
   }
   if (M.kind === 'warnnow') {
@@ -903,6 +1045,124 @@ async function submitWarnNow() {
     await b.commit(); closeModal(); pop('Warning sent', u.username + ' was warned.');
   } catch (e) { pop('Could not warn', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
 }
+/* ---------- own-post deletes, ban reasons, rules editor, boards ---------- */
+function openSelfDelete(kind, rid) { const p = postFrom(kind, rid); if (!p) return; openModal({ kind: 'selfdelete', post: p }); }
+async function executeSelfDelete() {
+  const p = M.post;
+  if (ui.busy) return;
+  ui.busy = true;
+  try {
+    const b = writeBatch(db);
+    if (p.replyId) { b.delete(doc(db, 'threads', p.threadId, 'replies', p.replyId)); b.update(doc(db, 'threads', p.threadId), { replyCount: increment(-1) }); }
+    else { const rs = await getDocs(collection(db, 'threads', p.threadId, 'replies')); rs.forEach(d => b.delete(d.ref)); b.delete(doc(db, 'threads', p.threadId)); }
+    await b.commit();
+    closeModal();
+    if (!p.replyId && ui.view === 'thread') ui.view = 'section';
+    render();
+    pop('Deleted', 'Your ' + (p.replyId ? 'reply' : 'thread') + ' was removed.');
+  } catch (e) { pop('Could not delete', 'Something went wrong (' + getErr(e) + '). Nothing was changed.', 'bad'); }
+  ui.busy = false;
+}
+function openBan(uid, edit) { if (!userOf(uid)) return; openModal({ kind: 'ban', uid, edit: !!edit, rule: null }); }
+async function submitBan() {
+  const u = userOf(M.uid); if (!u) return;
+  const note = (document.getElementById('m-note').value || '').trim();
+  const base = M.rule && M.rule !== 'other' ? ruleName(M.rule) : '';
+  const reason = (base && note && note !== base ? base + ' - ' + note : (note || base)).slice(0, 200);
+  if (!reason) return pop('Add a reason', 'Pick a rule or write a reason.', 'bad');
+  const edit = M.edit;
+  closeModal();
+  if (edit) simpleUserUpdate(u.id, { banReason: reason }, 'banEdit', 'Ban reason changed');
+  else simpleUserUpdate(u.id, { status: 'banned', banReason: reason }, 'ban', 'Banned (' + reason + ')');
+}
+function openRulesEditor() { if (!isAdmin()) return; openModal({ kind: 'rules', items: RULES.map(r => ({ id: r.id, text: r.text, penalty: r.penalty, ban: !!r.ban })) }); }
+function collectRules() {
+  const rows = [...$modal.querySelectorAll('[data-ri]')];
+  M.items = rows.map((row, i) => ({ id: M.items[i].id, text: row.querySelector('[data-f=text]').value.trim(), penalty: row.querySelector('[data-f=penalty]').value.trim(), ban: row.querySelector('[data-f=ban]').checked }));
+}
+async function saveRules() {
+  collectRules();
+  const items = M.items.filter(r => r.text).map(r => ({ id: r.id, text: r.text, penalty: r.penalty || (r.ban ? 'Instant ban' : 'Warning'), ban: r.ban }));
+  if (!items.length) return pop('Need a rule', 'Keep at least one rule.', 'bad');
+  if (items.length > 12) return pop('Too many rules', 'Use 12 rules or fewer.', 'bad');
+  try {
+    const b = writeBatch(db);
+    b.set(doc(db, 'config', 'rules'), { items, updatedBy: G.user.uid, updatedByName: G.me.username, updatedAt: serverTimestamp() });
+    logDoc(b, 'rules', null, { detail: 'Rules edited (' + items.length + ' rules)' });
+    await b.commit();
+    closeModal(); pop('Rules saved', 'The new rules are live for everyone.');
+  } catch (e) { pop('Could not save', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function createBoard(f) {
+  const name = document.getElementById('b-name').value.trim(), desc = document.getElementById('b-desc').value.trim();
+  if (name.length < 3 || name.length > 24 || !desc) return pop('Check the form', 'Use a name of 3 to 24 characters and add a short description.', 'bad');
+  if (allSections().some(s => s.name.toLowerCase() === name.toLowerCase())) return pop('Board exists', 'A board with that name already exists.', 'bad');
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20);
+  const id = 'b-' + (slug ? slug + '-' : '') + Math.random().toString(36).slice(2, 6);
+  try {
+    const b = writeBatch(db);
+    b.set(doc(db, 'boards', id), { name, desc: desc.slice(0, 60), createdBy: G.user.uid, createdByName: G.me.username, createdAt: serverTimestamp() });
+    logDoc(b, 'board', null, { detail: 'Board created: ' + name });
+    await b.commit();
+    f.reset(); pop('Board created', name + ' is now on the home page.');
+  } catch (e) { pop('Could not create', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function removeBoard(id) {
+  const bd = G.boards.find(x => x.id === id); if (!bd) return;
+  if (G.threads.some(t => t.section === id)) return pop('Board not empty', 'Only empty boards can be removed.', 'bad');
+  try {
+    const b = writeBatch(db);
+    b.delete(doc(db, 'boards', id));
+    logDoc(b, 'boardRemove', null, { detail: 'Board removed: ' + bd.name });
+    await b.commit();
+    pop('Removed', bd.name + ' was removed.');
+  } catch (e) { pop('Could not remove', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function unbanUser(uid, detail) {
+  const u = userOf(uid); if (!u) return;
+  try {
+    const b = writeBatch(db);
+    b.update(doc(db, 'users', uid), { status: 'approved', banReason: null });
+    b.delete(doc(db, 'appeals', uid));
+    logDoc(b, 'unban', u, { detail });
+    await b.commit();
+    pop('Done', detail + ': ' + u.username + '.');
+  } catch (e) { pop('Could not do that', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function decideAppeal(uid, approve) {
+  const a = G.appeals.find(x => x.id === uid); if (!a) return;
+  if (appealDue(a) <= Date.now()) return pop('Expired', 'This appeal ran past 72 hours and can no longer be decided.', 'bad');
+  if (approve) return unbanUser(uid, 'Appeal approved');
+  try {
+    const b = writeBatch(db);
+    b.update(doc(db, 'appeals', uid), { status: 'denied', handledBy: G.user.uid, handledByName: G.me.username, handledAt: serverTimestamp() });
+    logDoc(b, 'appealDeny', userOf(uid) || { id: uid, username: a.username }, { detail: 'Appeal denied' });
+    await b.commit();
+    pop('Denied', 'The appeal was denied.');
+  } catch (e) { pop('Could not deny', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function doAppeal() {
+  const text = (document.getElementById('ap-text').value || '').trim();
+  if (text.length < 20) return pop('Tell us more', 'Write at least 20 characters.', 'bad');
+  if (ui.busy) return;
+  ui.busy = true;
+  try {
+    await setDoc(doc(db, 'appeals', G.user.uid), { username: G.me.username, text, status: 'open', createdAt: serverTimestamp() });
+    pop('Appeal sent', 'An admin has 72 hours to decide. If nobody does, it expires and you can send a new one.');
+  } catch (e) { pop('Could not send', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+  ui.busy = false;
+}
+async function saveFilter() {
+  const words = [...new Set(document.getElementById('wf-words').value.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length >= 1 && w.length <= 40))];
+  if (words.length > 200) return pop('Too many', 'Use 200 entries or fewer.', 'bad');
+  try {
+    const b = writeBatch(db);
+    b.set(doc(db, 'config', 'wordfilter'), { words, updatedBy: G.user.uid, updatedByName: G.me.username, updatedAt: serverTimestamp() });
+    logDoc(b, 'wordfilter', null, { detail: 'Word filter list saved (' + words.length + ' entries)' });
+    await b.commit();
+    pop('Saved', 'The word filter now has ' + words.length + (words.length === 1 ? ' entry.' : ' entries.'));
+  } catch (e) { pop('Could not save', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
 async function purgeOld() {
   let total = 0;
   for (let i = 0; i < 10; i++) {
@@ -934,6 +1194,7 @@ async function tidy() {
   G.reports.filter(r => r.status !== 'open' && ms(r.handledAt || r.createdAt) < cut30).forEach(r => refs.push(doc(db, 'reports', r.id)));
   G.warnReqs.filter(r => r.status !== 'pending' && ms(r.handledAt || r.createdAt) < cut30).forEach(r => refs.push(doc(db, 'warnRequests', r.id)));
   Object.values(G.apps).filter(a => userOf(a.id) && userOf(a.id).status !== 'pending' && ms(a.createdAt) < cut30).forEach(a => refs.push(doc(db, 'applications', a.id)));
+  G.appeals.filter(a => ms(a.createdAt) < cut30 && (a.status !== 'open' || appealDue(a) < Date.now())).forEach(a => refs.push(doc(db, 'appeals', a.id)));
   const ws = await getDocs(query(collection(db, 'warnings'), where('seen', '==', true), limit(100)));
   ws.forEach(d => { if (ms(d.data().createdAt) < cut60) refs.push(d.ref); });
   n += await deleteRefs(refs);
@@ -964,6 +1225,18 @@ document.addEventListener('click', async e => {
     case 'zoom': el.classList.toggle('zoomed'); break;
     case 'quote': { const ta = document.getElementById('r-text'); if (ta && !ta.disabled) { ta.value += (ta.value && !/\n$/.test(ta.value) ? '\n' : '') + '>>' + d.no + '\n'; ta.focus(); ta.scrollIntoView({ block: 'center' }); } break; }
     case 'clearimg': { pending[d.kind] = null; const inp = document.getElementById('img-' + d.kind); if (inp) inp.value = ''; setPreview(d.kind); break; }
+    case 'savepfp': {
+      if (!isMod()) break;
+      if (!pending.pfp) { pop('No image', 'Pick an image first.', 'bad'); break; }
+      try { await updateDoc(doc(db, 'users', G.user.uid), { pfp: pending.pfp }); pending.pfp = null; render(true); pop('Saved', 'Your new profile picture is live.'); }
+      catch (err) { pop('Could not save', 'Something went wrong (' + getErr(err) + ').', 'bad'); }
+      break;
+    }
+    case 'resetpfp': {
+      try { await updateDoc(doc(db, 'users', G.user.uid), { pfp: null }); pending.pfp = null; render(true); pop('Reset', 'You are back to the default picture.'); }
+      catch (err) { pop('Could not reset', 'Something went wrong (' + getErr(err) + ').', 'bad'); }
+      break;
+    }
     case 'report': openReport(d.kind, d.rid); break;
     case 'delpost': openDelete(d.kind, d.rid); break;
     case 'reviewreport': { const r = G.reports.find(x => x.id === d.id); if (r) { ui.threadId = r.threadId; const t = findThread(r.threadId); if (t) ui.section = t.section; ui.view = 'thread'; ensureReplies(); const wait = setInterval(() => { const pp = r.kind === 'reply' ? G.replies.find(x => x.id === r.replyId) : findThread(r.threadId); if (pp || !findThread(r.threadId)) { clearInterval(wait); if (pp) openDelete(r.kind, r.replyId || r.threadId, r.id, r.rule === 'other' ? null : r.rule); else pop('Already gone', 'That post was already removed.', 'bad'); render(); } }, 150); setTimeout(() => clearInterval(wait), 4000); } break; }
@@ -974,8 +1247,16 @@ document.addEventListener('click', async e => {
     case 'dismissreq': dismissRequest(d.id); break;
     case 'timeout': { const sel = document.getElementById('to-' + d.uid); const len = Number(sel.value); simpleUserUpdate(d.uid, { timeoutUntil: Timestamp.fromMillis(Date.now() + len) }, 'timeout', 'Timed out for ' + sel.options[sel.selectedIndex].text); break; }
     case 'untimeout': simpleUserUpdate(d.uid, { timeoutUntil: null }, 'untimeout', 'Timeout removed'); break;
-    case 'ban': simpleUserUpdate(d.uid, { status: 'banned' }, 'ban', 'Banned'); break;
-    case 'unban': simpleUserUpdate(d.uid, { status: 'approved' }, 'unban', 'Unbanned'); break;
+    case 'ban': openBan(d.uid, false); break;
+    case 'editban': openBan(d.uid, true); break;
+    case 'unban': unbanUser(d.uid, 'Unbanned'); break;
+    case 'appealyes': decideAppeal(d.uid, true); break;
+    case 'appealno': decideAppeal(d.uid, false); break;
+    case 'selfdel': openSelfDelete(d.kind, d.rid); break;
+    case 'editrules': openRulesEditor(); break;
+    case 'addrule': collectRules(); M.items.push({ id: 'r' + Date.now().toString(36), text: '', penalty: 'Timeout and a warning', ban: false }); renderModal(); break;
+    case 'rmrule': collectRules(); M.items.splice(Number(d.i), 1); renderModal(); break;
+    case 'rmboard': removeBoard(d.id); break;
     case 'setrole': { const sel = document.getElementById('role-' + d.uid); simpleUserUpdate(d.uid, { role: sel.value }, 'role', 'Rank set to ' + sel.options[sel.selectedIndex].text); break; }
     case 'warnnow': openWarnNow(d.uid); break;
     case 'purge': try { const n = (await purgeOld()) + (await tidy()); pop('Cleaned up', n + (n === 1 ? ' old item was' : ' old items were') + ' removed.'); } catch (err) { pop('Could not clean up', getErr(err), 'bad'); } break;
@@ -986,7 +1267,8 @@ document.addEventListener('change', e => {
   if (inp) {
     if (!inp.files || !inp.files[0]) return;
     const kind = inp.dataset.img;
-    readImage(inp.files[0], 1200, 800000, (err, url) => {
+    const isPfp = kind === 'pfp';
+    readImage(inp.files[0], isPfp ? PFP_PX : 1200, isPfp ? PFP_CHARS : 800000, (err, url) => {
       if (err) { inp.value = ''; pop('Image rejected', err, 'bad'); return; }
       pending[kind] = url; setPreview(kind);
     });
@@ -1010,6 +1292,12 @@ document.addEventListener('submit', e => {
   else if (k === 'report') submitReport();
   else if (k === 'delete') executeDelete();
   else if (k === 'warnnow') submitWarnNow();
+  else if (k === 'selfdelete') executeSelfDelete();
+  else if (k === 'ban') submitBan();
+  else if (k === 'rulesedit') saveRules();
+  else if (k === 'board') createBoard(f);
+  else if (k === 'appeal') doAppeal();
+  else if (k === 'filter') saveFilter();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (M) closeModal(); else if (queue.length) closePop(); } });
 setInterval(() => { if (G.user && isApproved() && !queue.length) softRender(); }, 60000);
