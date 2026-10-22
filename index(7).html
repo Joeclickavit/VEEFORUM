@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vee-Forums</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<style>
+/* Layout: full-width green-terminal imageboard. Top bar, board bar, wide main column. Staff tools live under one Staff page. */
+:root {
+  --bg: #020c05; --bar: #06200e; --row: #0a2813; --row-hi: #12401f;
+  --glow: #8dff9a; --dim: #4fb468; --line: #1c5a2e;
+  --alert: #ff6a4d; --amber: #ffd36b; --quote: #c8ff6b; --cyan: #7de8ff;
+  --f-display: 'Silkscreen', 'Courier New', monospace;
+  --f-body: 'VT323', 'Courier New', monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0; background: var(--bg); color: var(--glow);
+  font-family: var(--f-body); font-size: 22px; line-height: 1.25; min-height: 100vh;
+  background-image: radial-gradient(ellipse at 50% -10%, rgba(40,200,90,.16), rgba(0,0,0,0) 55%), linear-gradient(rgba(60,255,110,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(60,255,110,.035) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px; background-attachment: fixed;
+}
+body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 70; background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.18) 2px 3px), radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,.45)); }
+button, input, textarea, select { font: inherit; color: inherit; }
+.gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { position: sticky; top: 0; z-index: 20; background: var(--bar); border-bottom: 2px solid var(--glow); box-shadow: 0 0 18px rgba(141,255,154,.25); }
+.top .in { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 8px; }
+.brand { font-family: var(--f-display); font-weight: 700; font-size: 24px; letter-spacing: .1em; text-shadow: 0 0 12px rgba(141,255,154,.7); background: none; border: 0; cursor: pointer; padding: 0; }
+.brand:hover { text-shadow: 2px 0 var(--alert), -2px 0 var(--amber), 0 0 12px rgba(141,255,154,.7); }
+.boards { display: flex; gap: 2px 4px; flex-wrap: wrap; align-items: center; padding-bottom: 8px; font-family: var(--f-display); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.boards .sep { color: var(--dim); }
+.bl { background: none; border: 0; padding: 3px 6px; cursor: pointer; color: var(--dim); font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.bl:hover { color: var(--glow); background: var(--row-hi); }
+.bl[aria-current="page"] { color: var(--bg); background: var(--glow); }
+.bl .cnt { color: var(--bg); background: var(--alert); padding: 0 5px; margin-left: 4px; }
+.who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.me { display: flex; align-items: center; gap: 8px; background: none; border: 2px solid var(--line); padding: 3px 10px 3px 4px; cursor: pointer; }
+.me:hover { border-color: var(--glow); }
+.main { display: flex; flex-direction: column; gap: 16px; padding-block: 22px 28px; min-width: 0; }
+.label { font-family: var(--f-display); font-size: 12px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.h1 { font-family: var(--f-display); font-weight: 700; font-size: 30px; letter-spacing: .06em; margin: 0; text-shadow: 0 0 10px rgba(141,255,154,.5); overflow-wrap: anywhere; }
+.h2 { font-family: var(--f-display); font-weight: 700; font-size: 17px; letter-spacing: .05em; margin: 0; }
+.desc { color: var(--dim); }
+.box { border: 2px solid var(--line); background: var(--row); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box.gold { border-color: var(--amber); }
+.box.red { border-color: var(--alert); }
+.warn { color: var(--amber); }
+.bad { color: var(--alert); }
+.btn { background: transparent; border: 2px solid var(--glow); padding: 6px 16px; cursor: pointer; font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--glow); display: inline-block; }
+.btn:hover:not([disabled]) { background: var(--glow); color: var(--bg); box-shadow: 0 0 14px rgba(141,255,154,.5); }
+.btn.sm { padding: 3px 10px; font-size: 11px; }
+.btn.ghost { border-color: var(--line); color: var(--dim); }
+.btn.danger { border-color: var(--alert); color: var(--alert); }
+.btn.danger:hover:not([disabled]) { background: var(--alert); color: var(--bg); box-shadow: 0 0 14px rgba(255,106,77,.5); }
+.btn[aria-pressed="true"] { background: var(--glow); color: var(--bg); }
+.btn[disabled] { opacity: .4; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, label:focus-within { outline: 3px solid var(--amber); outline-offset: 2px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tbl { border: 2px solid var(--line); background: var(--row); }
+.tbl .hd { font-family: var(--f-display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--bg); background: var(--glow); padding: 5px 12px; }
+.brow { display: grid; grid-template-columns: minmax(0, 1fr) 170px 110px; gap: 12px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 10px 12px; cursor: pointer; align-items: center; }
+.brow:hover { background: var(--row-hi); }
+.brow .bn { font-family: var(--f-display); font-weight: 700; font-size: 17px; letter-spacing: .05em; display: block; }
+.brow .num { color: var(--dim); text-align: right; font-size: 20px; }
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.cat { display: flex; flex-direction: column; background: var(--row); border: 2px solid var(--line); }
+.cat:hover { border-color: var(--glow); box-shadow: 0 0 16px rgba(141,255,154,.25); }
+.cat.top1 { border-color: var(--glow); }
+.catmain { display: flex; flex-direction: column; gap: 6px; text-align: left; background: none; border: 0; padding: 10px; cursor: pointer; min-width: 0; flex: 1; }
+.thumb { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; background: repeating-linear-gradient(45deg, var(--row-hi) 0 8px, var(--row) 8px 16px); border: 2px solid var(--line); overflow: hidden; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cstats { font-family: var(--f-display); font-size: 11px; letter-spacing: .06em; color: var(--dim); }
+.ct { font-size: 24px; line-height: 1.05; overflow-wrap: anywhere; }
+.cs { color: var(--dim); font-size: 19px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.cby { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 18px; margin-top: auto; flex-wrap: wrap; }
+.catbump { margin: 0 10px 10px; }
+.list { display: flex; flex-direction: column; gap: 6px; }
+.post { display: grid; grid-template-columns: minmax(0, 1fr) auto; background: var(--row); border: 2px solid transparent; }
+.post:hover { background: var(--row-hi); border-color: var(--line); }
+.post.top1 { border-color: var(--glow); }
+.rowmain { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; text-align: left; background: none; border: 0; padding: 9px 12px; cursor: pointer; align-items: center; }
+.ptitle { display: block; font-size: 26px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.psub { display: block; font-size: 18px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rowside { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; padding: 6px 12px; }
+.time { font-size: 21px; font-variant-numeric: tabular-nums; }
+.tag { font-family: var(--f-display); font-size: 10px; letter-spacing: .08em; padding: 1px 5px; border: 1px solid var(--amber); color: var(--amber); vertical-align: middle; white-space: nowrap; }
+.tag.owner { border-color: var(--amber); color: var(--bg); background: var(--amber); }
+.tag.coowner { border-color: var(--amber); color: var(--amber); }
+.tag.admin { border-color: var(--alert); color: var(--alert); }
+.tag.mod { border-color: var(--cyan); color: var(--cyan); }
+.tag.dim { border-color: var(--line); color: var(--dim); }
+.av { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--s, 40px); height: var(--s, 40px); flex: none; border: 2px solid var(--line); background: var(--row-hi); overflow: hidden; font-family: var(--f-display); color: var(--dim); font-size: calc(var(--s, 40px) * .4); }
+.av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.form { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--line); padding: 14px; background: var(--row); max-width: 820px; }
+.form label.l { font-family: var(--f-display); font-size: 11px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.form input[type=text], .form input[type=password], .form textarea, select { background: var(--bg); border: 2px solid var(--line); padding: 6px 10px; width: 100%; font-size: 23px; color: var(--glow); caret-color: var(--glow); }
+select { width: auto; padding: 3px 8px; font-size: 20px; }
+.form textarea { min-height: 110px; resize: vertical; }
+.chk { display: flex; gap: 10px; align-items: flex-start; font-size: 22px; }
+.chk input { width: 20px; height: 20px; margin-top: 3px; accent-color: #8dff9a; flex: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.preview { display: flex; align-items: center; gap: 10px; }
+.preview img { max-height: 90px; max-width: 160px; border: 2px solid var(--line); }
+.preview[hidden] { display: none; }
+.pb { background: var(--row); border: 2px solid var(--line); max-width: 1100px; scroll-margin-top: 110px; }
+.pb.op { border-color: var(--glow); }
+.pb.hl { box-shadow: 0 0 0 3px var(--amber); }
+.ph { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--row-hi); font-size: 19px; color: var(--dim); }
+.ph .nm { color: var(--glow); }
+.ph .no { background: none; border: 0; padding: 0; cursor: pointer; color: var(--amber); font: inherit; }
+.ph .no:hover { text-decoration: underline; }
+.ph .acts { margin-left: auto; display: flex; gap: 6px; }
+.pbody { padding: 10px 12px; overflow: hidden; }
+.pbody .txt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 24px; }
+.imgbtn { float: left; margin: 0 14px 8px 0; padding: 0; background: none; border: 2px solid var(--line); cursor: zoom-in; max-width: 100%; }
+.imgbtn img { display: block; max-width: 220px; max-height: 220px; }
+.imgbtn.zoomed { float: none; display: block; cursor: zoom-out; margin: 0 0 10px; }
+.imgbtn.zoomed img { max-width: 100%; max-height: 80vh; }
+.gt { color: var(--quote); }
+.qlink { color: var(--amber); }
+.users { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.user { display: flex; align-items: center; gap: 12px; background: var(--row); border: 2px solid var(--line); padding: 8px 12px; min-width: 0; }
+.user .nm { min-width: 0; overflow-wrap: anywhere; }
+.user .joined { color: var(--dim); font-size: 18px; }
+.newest { display: flex; align-items: center; gap: 16px; border: 2px solid var(--amber); background: var(--row); padding: 14px; box-shadow: 0 0 20px rgba(255,211,107,.15); }
+.newest .name { font-size: 38px; color: var(--amber); text-shadow: 0 0 8px rgba(255,211,107,.4); overflow-wrap: anywhere; line-height: 1; }
+.seg { display: flex; }
+.seg button { flex: 1; background: var(--row); border: 2px solid var(--line); padding: 8px; cursor: pointer; font-family: var(--f-display); font-size: 12px; letter-spacing: .08em; color: var(--dim); text-transform: uppercase; }
+.seg button[aria-pressed="true"] { background: var(--glow); color: var(--bg); border-color: var(--glow); }
+.gate { min-height: 100vh; display: grid; place-items: center; padding-block: 28px; }
+.gate .panel { width: min(540px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.lock { text-align: center; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.fine { font-size: 18px; color: var(--dim); }
+.empty { padding: 26px 8px; color: var(--dim); }
+.foot { border-top: 2px dashed var(--line); padding-block: 14px 26px; display: flex; flex-wrap: wrap; gap: 6px 22px; color: var(--dim); font-size: 19px; }
+.foot b { color: var(--glow); font-weight: 400; }
+.subtabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.item { background: var(--row); border: 2px solid var(--line); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; max-width: 1100px; }
+.item.open { border-color: var(--amber); }
+.item .q { border-left: 3px solid var(--line); padding-left: 10px; color: var(--glow); overflow-wrap: anywhere; white-space: pre-wrap; }
+.rulelist { display: flex; flex-direction: column; gap: 10px; max-width: 760px; counter-reset: r; }
+.rule { background: var(--row); border: 2px solid var(--line); padding: 12px 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.rule .rt { font-family: var(--f-display); font-weight: 700; font-size: 20px; letter-spacing: .04em; }
+.stripe { background: var(--row); border: 2px solid var(--alert); padding: 10px 14px; color: var(--alert); }
+.overlay { position: fixed; inset: 0; z-index: 60; background: rgba(2,10,5,.8); display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+.overlay[hidden] { display: none; }
+.pop { width: min(380px, 100%); background: var(--bg); border: 3px solid var(--glow); padding: 20px 18px 18px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; box-shadow: 0 0 26px rgba(141,255,154,.35); }
+.pop.bad { border-color: var(--alert); box-shadow: 0 0 26px rgba(255,106,77,.3); }
+.pop.bad h2 { color: var(--alert); text-shadow: none; }
+.pop h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 28px; letter-spacing: .08em; text-shadow: 0 0 10px rgba(141,255,154,.5); }
+.pop p { margin: 0; font-size: 23px; overflow-wrap: anywhere; }
+.pop .rank { display: flex; align-items: center; gap: 12px; font-family: var(--f-display); font-size: 22px; color: var(--amber); }
+.modal { width: min(560px, 100%); background: var(--bg); border: 3px solid var(--glow); padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 26px rgba(141,255,154,.35); margin: auto; }
+.modal.bad { border-color: var(--alert); }
+.modal textarea, .modal input[type=text] { background: var(--row); border: 2px solid var(--line); padding: 6px 10px; width: 100%; font-size: 22px; color: var(--glow); min-height: 70px; resize: vertical; }
+.opt { display: flex; gap: 10px; align-items: flex-start; padding: 6px 10px; border: 2px solid var(--line); background: var(--row); cursor: pointer; font-size: 22px; }
+.opt input { margin-top: 4px; accent-color: #8dff9a; flex: none; }
+.opt small { display: block; color: var(--dim); font-size: 18px; }
+@media (max-width: 700px) {
+  body { font-size: 20px; }
+  .brand { font-size: 18px; }
+  .brow { grid-template-columns: minmax(0, 1fr) 90px; }
+  .brow .num.hide { display: none; }
+  .ptitle { font-size: 22px; }
+  .rowmain { grid-template-columns: 36px minmax(0, 1fr); }
+  .imgbtn { float: none; display: block; }
+  .imgbtn img { max-width: 100%; }
+  .ph .acts { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pop, .modal { animation: pop .18s ease-out; }
+  @keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+  .brand { animation: flick 6s infinite; }
+  @keyframes flick { 0%, 94%, 100% { opacity: 1; } 95% { opacity: .78; } 96.5% { opacity: 1; } 98% { opacity: .86; } }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="popup" class="overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="pop-title"></div>
+<div id="modal" class="overlay" hidden role="dialog" aria-modal="true"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { getFirestore, collection, doc, onSnapshot, query, orderBy, where, limit, writeBatch, runTransaction, serverTimestamp, increment, setDoc, updateDoc, getDocs, Timestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+/* ============ Firebase web config for the vee-forums project ============ */
+const firebaseConfig = {
+  apiKey: 'AIzaSyAG69Iv0c-F72KkQoNERFeI5v1Vb1I7yp4',
+  authDomain: 'vee-forums.firebaseapp.com',
+  projectId: 'vee-forums',
+  storageBucket: 'vee-forums.firebasestorage.app',
+  messagingSenderId: '564155660335',
+  appId: '1:564155660335:web:b521b89203416e5c37eeda'
+};
+/* ========================================================================================================== */
+
+const DEFAULT_PFP = 'https://cdn.jsdelivr.net/gh/Joeclickavit/VEEFORUMSPFP@main/Smart_thinking!_Sticker.webp';
+const EMAIL_DOMAIN = '@veeforums.app';
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
+const MAX_UPLOAD = 2 * 1024 * 1024;
+const MAX_THREADS = 300; // oldest threads beyond this are removed so the database never fills up
+const SECTIONS = [
+  { id: 'dandys', name: 'DandysWorld', desc: "Discussions of Dandy's World" },
+  { id: 'astros', name: 'Discussions', desc: 'Discuss Astros Dreamland' },
+  { id: 'bugs', name: 'Bug Report', desc: 'Report bugs about Astros Dreamland' },
+  { id: 'sites', name: 'Game Websites', desc: 'Share Game websites' },
+  { id: 'methods', name: 'Methods', desc: 'Share your methods' },
+  { id: 'art', name: 'Art', desc: 'Send your art here' },
+  { id: 'media', name: 'Media', desc: 'Send pictures here' },
+  { id: 'memes', name: 'Memes', desc: 'Send memes here' },
+  { id: 'offtopic', name: 'Off-Topic', desc: 'Anything else goes here' }
+];
+const RULES = [
+  { id: 'nsfw', text: 'No NSFW', penalty: 'Instant ban', ban: true },
+  { id: 'tragedy', text: 'No making fun of tragedies', penalty: 'Timeout and a warning' },
+  { id: 'racism', text: 'No racism', penalty: 'Timeout and a warning' },
+  { id: 'homophobia', text: 'No homophobia', penalty: 'Timeout and a warning' }
+];
+const DURS = [['10 minutes', 10 * MIN], ['1 hour', HOUR], ['24 hours', DAY], ['7 days', 7 * DAY]];
+const ROLE_LABEL = { owner: 'OWNER', coowner: 'CO-OWNER', admin: 'ADMIN', mod: 'MOD' };
+
+const $app = document.getElementById('app');
+const $pop = document.getElementById('popup');
+const $modal = document.getElementById('modal');
+
+/* ---------- helpers ---------- */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ms = t => (t && typeof t.toMillis === 'function') ? t.toMillis() : (typeof t === 'number' ? t : Date.now());
+const rk = r => r === 'owner' ? 4 : r === 'coowner' ? 3 : r === 'admin' ? 2 : r === 'mod' ? 1 : 0;
+const safeImg = s => (typeof s === 'string' && /^data:image\/(png|jpe?g|webp|gif);base64,/.test(s)) ? s : null;
+function ago(t) { const d = Date.now() - t; if (d < MIN) return 'just now'; if (d < HOUR) return Math.floor(d / MIN) + 'm ago'; if (d < DAY) return Math.floor(d / HOUR) + 'h ago'; return Math.floor(d / DAY) + 'd ago'; }
+const dateStr = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const stamp = t => { const d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
+const secById = id => SECTIONS.find(s => s.id === id);
+const ruleById = id => RULES.find(r => r.id === id);
+const ruleName = id => id === 'other' ? 'Other' : (ruleById(id) ? ruleById(id).text : id);
+function monthStartMs() { const n = new Date(); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1); }
+function nextWipeMs() { const n = new Date(); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 1); }
+function wipeInfo() {
+  const t = nextWipeMs(), days = Math.max(1, Math.ceil((t - Date.now()) / DAY));
+  return { days, text: new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) };
+}
+const emailFor = name => name.toLowerCase() + EMAIL_DOMAIN;
+
+/* ---------- state ---------- */
+const G = {
+  user: null, me: null, meLoaded: false, users: {}, threads: [], replies: [], repFor: null,
+  reports: [], modLog: [], warnReqs: [], apps: {}, memberKey: null, ready: { users: false, threads: false },
+  alertsInit: false, prevReports: 0, prevPending: 0, prevReqs: 0, purged: false, err: null
+};
+const ui = { view: 'home', section: null, threadId: null, composing: false, mode: 'login', layout: 'catalog', staffTab: 'reports', busy: false };
+const pending = { post: null, reply: null };
+let queue = [];
+let M = null; // open modal state
+let unsubs = [], unsubMe = null, unsubReplies = null;
+
+const configured = !String(firebaseConfig.apiKey).startsWith('PASTE');
+let app_, auth, db;
+if (configured) { app_ = initializeApp(firebaseConfig); auth = getAuth(app_); db = getFirestore(app_); }
+
+const myRank = () => G.me ? rk(G.me.role) : 0;
+const isApproved = () => G.me && G.me.status === 'approved';
+const isMod = () => isApproved() && myRank() >= 1;
+const isAdmin = () => isApproved() && myRank() >= 2;
+const isOwnerTier = () => isApproved() && myRank() >= 3;
+const actOn = role => myRank() >= 3 ? rk(role) <= 3 : rk(role) < myRank();
+const timeoutMs = () => G.me && G.me.timeoutUntil ? ms(G.me.timeoutUntil) : 0;
+const isTimedOut = () => timeoutMs() > Date.now();
+const userOf = uid => G.users[uid];
+const getErr = e => (e && e.code) ? e.code : String(e);
+
+/* ---------- avatars, names ---------- */
+function av(uid, size, nameFallback) {
+  const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
+  const src = u && safeImg(u.pfp) ? u.pfp : DEFAULT_PFP;
+  const name = (u && u.username) || nameFallback || '?';
+  return `<span class="av" style="--s:${size || 40}px"><b aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</b><img src="${esc(src)}" alt="" onerror="this.remove()"></span>`;
+}
+function badge(role) { return ROLE_LABEL[role] ? `<span class="tag ${role}">${ROLE_LABEL[role]}</span>` : ''; }
+function nameHTML(uid, fallback) {
+  const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
+  return `<span class="nm">${esc((u && u.username) || fallback || 'unknown')}</span>${u ? badge(u.role) : ''}`;
+}
+function fmt(t) {
+  return esc(t).split('\n').map(line => {
+    const h = line.replace(/&gt;&gt;(\d+)/g, '<a href="#no-$1" class="qlink" data-action="goto" data-no="$1">&gt;&gt;$1</a>');
+    return /^&gt;(?!&gt;)/.test(line) ? `<span class="gt">${h}</span>` : h;
+  }).join('\n');
+}
+
+/* ---------- popups and modal ---------- */
+function pop(title, msg, tone, extra, ack) { queue.push({ title, msg, tone: tone || '', extra: extra || '', ack }); showPop(); }
+function showPop() {
+  const p = queue[0];
+  if (!p) { $pop.hidden = true; $pop.innerHTML = ''; return; }
+  $pop.hidden = false;
+  $pop.innerHTML = `<div class="pop ${p.tone === 'bad' ? 'bad' : ''}"><h2 id="pop-title">${esc(p.title)}!</h2>${p.extra}<p>${esc(p.msg)}</p><button type="button" class="btn" id="pop-ok" data-action="ok">&gt; Okay!</button></div>`;
+  const ok = document.getElementById('pop-ok'); if (ok) ok.focus();
+}
+function closePop() {
+  const p = queue.shift();
+  if (p && p.ack) updateDoc(doc(db, 'warnings', p.ack), { seen: true }).catch(() => {});
+  showPop();
+}
+function openModal(state) { M = state; renderModal(); }
+function closeModal() { M = null; $modal.hidden = true; $modal.innerHTML = ''; }
+
+/* ---------- images (stored compressed inside Firestore, so no paid Storage plan is needed) ---------- */
+function readImage(file, maxPx, maxChars, cb) {
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) return cb('Use a PNG, JPG, WEBP or GIF image.');
+  if (file.size >= MAX_UPLOAD) return cb(`That image is ${(file.size / 1048576).toFixed(1)} MB. Images must be under 2 MB.`);
+  const fr = new FileReader();
+  fr.onerror = () => cb('That file could not be read.');
+  fr.onload = () => {
+    const url = fr.result;
+    if (file.type === 'image/gif') {
+      if (url.length >= maxChars) return cb('That GIF is too big to store. Use a GIF under about 600 KB, or a PNG, JPG or WEBP.');
+      return cb(null, url);
+    }
+    const img = new Image();
+    img.onerror = () => cb('That image could not be opened.');
+    img.onload = () => {
+      let size = maxPx, q = 0.82;
+      for (let i = 0; i < 6; i++) {
+        const sc = Math.min(1, size / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        let out = c.toDataURL('image/webp', q);
+        if (out.indexOf('data:image/webp') !== 0) out = c.toDataURL('image/jpeg', q);
+        if (out.length < maxChars) return cb(null, out);
+        size = Math.round(size * 0.8); q = Math.max(0.5, q - 0.08);
+      }
+      cb('That image could not be shrunk enough to store.');
+    };
+    img.src = url;
+  };
+  fr.readAsDataURL(file);
+}
+function setPreview(kind) {
+  const box = document.getElementById('prev-' + kind); if (!box) return;
+  if (pending[kind]) { box.hidden = false; box.innerHTML = `<img src="${pending[kind]}" alt="Selected image"><button type="button" class="btn sm ghost" data-action="clearimg" data-kind="${kind}">Remove</button>`; }
+  else { box.hidden = true; box.innerHTML = ''; }
+}
+const imgPicker = kind => `<div class="row"><label class="btn sm ghost" for="img-${kind}">Add image (under 2 MB)</label><input class="sr" id="img-${kind}" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-img="${kind}"></div><div class="preview" id="prev-${kind}" hidden></div>`;
+
+/* ---------- listeners ---------- */
+function onErr(name) { return e => { console.error(name, e); if (getErr(e) === 'permission-denied') G.err = 'permission'; softRender(); }; }
+function stopMember() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; G.users = {}; G.threads = []; G.reports = []; G.modLog = []; G.warnReqs = []; G.apps = {}; G.ready = { users: false, threads: false }; G.alertsInit = false; stopReplies(); }
+function stopReplies() { if (unsubReplies) { unsubReplies(); unsubReplies = null; } G.replies = []; G.repFor = null; }
+function snapData(d) { return { id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }; }
+function startMember() {
+  const uid = G.user.uid;
+  unsubs.push(onSnapshot(collection(db, 'users'), s => { G.users = {}; s.forEach(d => { G.users[d.id] = snapData(d); }); G.ready.users = true; staffAlerts(); softRender(); }, onErr('users')));
+  unsubs.push(onSnapshot(query(collection(db, 'threads'), where('createdAt', '>=', Timestamp.fromMillis(monthStartMs())), orderBy('createdAt', 'desc')),
+    s => { G.threads = s.docs.map(snapData); G.ready.threads = true; softRender(); }, onErr('threads')));
+  unsubs.push(onSnapshot(query(collection(db, 'warnings'), where('targetUid', '==', uid), where('seen', '==', false)), s => {
+    s.docChanges().forEach(ch => {
+      if (ch.type !== 'added') return;
+      const w = ch.doc.data();
+      pop('Warning', `You were warned for: ${ruleName(w.rule)}.${w.note ? ' Note from staff: ' + w.note : ''} Keep following the rules or you may be timed out or banned.`, 'bad', '', ch.doc.id);
+    });
+  }, onErr('warnings')));
+  if (isMod()) {
+    unsubs.push(onSnapshot(query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100)), s => { G.reports = s.docs.map(snapData); staffAlerts(); softRender(); }, onErr('reports')));
+    unsubs.push(onSnapshot(query(collection(db, 'modLog'), orderBy('createdAt', 'desc'), limit(100)), s => { G.modLog = s.docs.map(snapData); softRender(); }, onErr('modLog')));
+  }
+  if (isAdmin()) {
+    unsubs.push(onSnapshot(query(collection(db, 'warnRequests'), orderBy('createdAt', 'desc'), limit(100)), s => { G.warnReqs = s.docs.map(snapData); staffAlerts(); softRender(); }, onErr('warnRequests')));
+    unsubs.push(onSnapshot(collection(db, 'applications'), s => { G.apps = {}; s.forEach(d => { G.apps[d.id] = snapData(d); }); softRender(); }, onErr('applications')));
+    if (!G.purged) { G.purged = true; purgeOld().catch(() => {}); setTimeout(() => tidy().catch(() => {}), 8000); }
+  }
+}
+function syncMember() {
+  const key = isApproved() ? 'a:' + G.me.role : null;
+  if (key === G.memberKey) return;
+  stopMember(); G.memberKey = key;
+  if (key) startMember();
+}
+function ensureReplies() {
+  if (ui.view !== 'thread' || !isApproved()) { if (G.repFor) stopReplies(); return; }
+  if (G.repFor === ui.threadId) return;
+  stopReplies(); G.repFor = ui.threadId;
+  const id = ui.threadId;
+  unsubReplies = onSnapshot(query(collection(db, 'threads', id, 'replies'), orderBy('createdAt', 'asc')), s => { G.replies = s.docs.map(snapData); softRender(); }, onErr('replies'));
+}
+const pendingUsers = () => Object.values(G.users).filter(u => u.status === 'pending').sort((a, b) => ms(a.createdAt) - ms(b.createdAt));
+function openReports() { return G.reports.filter(r => r.status === 'open'); }
+function pendingReqs() { return G.warnReqs.filter(r => r.status === 'pending'); }
+function staffAlerts() {
+  if (!G.ready.users) return;
+  const r = isMod() ? openReports().length : 0, p = isAdmin() ? pendingUsers().length : 0, q = isAdmin() ? pendingReqs().length : 0;
+  if (G.alertsInit) {
+    if (r > G.prevReports) pop('New report', 'A member reported a post. Open Staff, then Reports.');
+    if (p > G.prevPending) pop('New application', 'Someone is waiting for approval. Open Staff, then Approvals.');
+    if (q > G.prevReqs) pop('Warning request', 'A mod sent a warning request. Open Staff, then Warn requests.');
+  }
+  G.prevReports = r; G.prevPending = p; G.prevReqs = q; G.alertsInit = true;
+}
+
+/* ---------- auth ---------- */
+if (configured) {
+  onAuthStateChanged(auth, user => {
+    if (unsubMe) { unsubMe(); unsubMe = null; }
+    stopMember(); G.memberKey = null; G.user = user; G.me = null; G.meLoaded = false; G.err = null; G.purged = false;
+    ui.view = 'home'; ui.section = null; ui.threadId = null; ui.composing = false;
+    if (!user) { render(); return; }
+    unsubMe = onSnapshot(doc(db, 'users', user.uid), s => {
+      G.meLoaded = true;
+      G.me = s.exists() ? snapData(s) : null;
+      syncMember(); softRender();
+    }, e => { console.error(e); G.meLoaded = true; G.err = 'account'; render(); });
+    render();
+  });
+}
+async function doSignup(f) {
+  const name = f.elements.name.value.trim(), pass = f.elements.pass.value, pass2 = f.elements.pass2.value, reason = f.elements.reason.value.trim();
+  if (!/^[A-Za-z0-9_-]{3,16}$/.test(name)) return pop('Invalid name', 'Use 3 to 16 letters, numbers, dashes or underscores.', 'bad');
+  if (/(admin|owner|staff|moderator|itsmason)/i.test(name)) return pop('Name not allowed', 'That name looks like a staff name. Pick another one.', 'bad');
+  if (pass.length < 8) return pop('Weak password', 'Use at least 8 characters.', 'bad');
+  if (pass !== pass2) return pop('Passwords differ', 'The two passwords do not match.', 'bad');
+  if (reason.length < 20) return pop('Tell us more', 'Write at least 20 characters about why you want to join.', 'bad');
+  ui.busy = true;
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, emailFor(name), pass);
+    const b = writeBatch(db);
+    b.set(doc(db, 'users', cred.user.uid), { username: name, usernameLower: name.toLowerCase(), role: 'user', status: 'pending', timeoutUntil: null, pfp: null, createdAt: serverTimestamp() });
+    b.set(doc(db, 'applications', cred.user.uid), { username: name, reason, createdAt: serverTimestamp() });
+    await b.commit();
+    pop('Application sent', 'Staff will review it within 72 hours. You can log in any time to check.');
+  } catch (e) {
+    const c = getErr(e);
+    if (c === 'auth/email-already-in-use') pop('Name taken', 'Someone already has that username.', 'bad');
+    else if (c === 'auth/weak-password') pop('Weak password', 'Pick a stronger password.', 'bad');
+    else if (c === 'auth/network-request-failed') pop('No connection', 'Check your internet and try again.', 'bad');
+    else pop('Could not sign up', 'Something went wrong (' + c + '). Try again.', 'bad');
+  }
+  ui.busy = false;
+}
+async function doLogin(f) {
+  const name = f.elements.name.value.trim(), pass = f.elements.pass.value;
+  if (!name || !pass) return;
+  ui.busy = true;
+  try { await signInWithEmailAndPassword(auth, emailFor(name), pass); }
+  catch (e) {
+    const c = getErr(e);
+    if (c === 'auth/too-many-requests') pop('Slow down', 'Too many tries. Wait a few minutes and try again.', 'bad');
+    else if (c === 'auth/network-request-failed') pop('No connection', 'Check your internet and try again.', 'bad');
+    else pop('Access denied', 'Username or password did not match.', 'bad');
+  }
+  ui.busy = false;
+}
+
+/* ---------- views ---------- */
+function setupHTML() {
+  return `<div class="gate gut"><div class="panel"><div class="lock"><span class="brand" style="cursor:default;font-size:30px">VEE-FORUMS</span></div>
+    <div class="box red"><span class="h2 bad">Firebase is not connected yet</span><span>Open index.html in a text editor and paste your Firebase web config where it says PASTE YOUR FIREBASE WEB CONFIG HERE. The README lists every step.</span></div></div></div>`;
+}
+function gateHTML() {
+  const login = ui.mode === 'login';
+  return `<div class="gate gut"><div class="panel">
+    <div class="lock"><span class="brand" style="cursor:default;font-size:30px">VEE-FORUMS</span><span class="desc">Log in or request an account to read and post.</span></div>
+    <div class="seg"><button type="button" data-action="mode" data-mode="login" aria-pressed="${login}">Log in</button><button type="button" data-action="mode" data-mode="signup" aria-pressed="${!login}">Request account</button></div>
+    <form class="form" data-form="${login ? 'login' : 'signup'}" autocomplete="off">
+      <label class="l" for="f-name">Username</label><input id="f-name" name="name" type="text" maxlength="16" required autocomplete="username">
+      <label class="l" for="f-pass">Password</label><input id="f-pass" name="pass" type="password" minlength="${login ? 1 : 8}" required autocomplete="${login ? 'current-password' : 'new-password'}" placeholder="${login ? '' : 'At least 8 characters'}">
+      ${login ? '' : `<label class="l" for="f-pass2">Repeat password</label><input id="f-pass2" name="pass2" type="password" minlength="8" required autocomplete="new-password">
+      <label class="l" for="f-reason">Why do you want to join?</label><textarea id="f-reason" name="reason" minlength="20" maxlength="500" required placeholder="Staff read this before approving you."></textarea>
+      <div class="fine">Every account needs staff approval. You get a decision within 72 hours.</div>`}
+      <div class="row"><button class="btn" type="submit">${login ? 'Log in' : 'Send application'}</button></div>
+    </form></div></div>`;
+}
+function statusHTML(title, body, tone) {
+  return `<div class="gate gut"><div class="panel"><div class="lock"><span class="brand" style="cursor:default;font-size:30px">VEE-FORUMS</span></div>
+    <div class="box ${tone === 'bad' ? 'red' : 'gold'}"><span class="h2 ${tone === 'bad' ? 'bad' : 'warn'}">${esc(title)}</span>${body}</div>
+    <div class="row"><button type="button" class="btn sm ghost" data-action="logout">Log out</button></div></div></div>`;
+}
+function pendingHTML() {
+  const due = ms(G.me.createdAt) + 72 * HOUR;
+  const hrs = Math.max(0, Math.ceil((due - Date.now()) / HOUR));
+  return statusHTML('Waiting for admin approval',
+    `<span>Your application was sent to the admins. A decision is promised within 72 hours of ${esc(stamp(ms(G.me.createdAt)))}${hrs > 0 ? ` (about ${hrs}h left)` : ''}.</span><span class="fine">This page updates by itself the moment you are approved.</span>`);
+}
+function shell(main) {
+  const w = wipeInfo();
+  const reportsN = isMod() ? openReports().length : 0;
+  const adminN = isAdmin() ? pendingUsers().length + pendingReqs().length : 0;
+  const staffN = reportsN + adminN;
+  const nu = newestUser();
+  const timeoutBanner = isTimedOut() ? `<div class="stripe">You are timed out until ${esc(stamp(timeoutMs()))}. You can read but not post, reply or bump.</div>` : '';
+  return `<header class="top"><div class="gut"><div class="in"><button type="button" class="brand" data-action="home">VEE-FORUMS</button>
+    <div class="who"><button type="button" class="me" data-action="profile" aria-label="Edit your profile">${av(G.user.uid, 30)}<span>${esc(G.me.username)}</span>${badge(G.me.role)}</button>
+    <button type="button" class="btn sm ghost" data-action="logout">Log out</button></div></div>
+    <nav class="boards" aria-label="Boards"><button type="button" class="bl" data-action="home" ${ui.view === 'home' || ui.view === 'section' || ui.view === 'thread' ? 'aria-current="page"' : ''}>Home</button>
+    <span class="sep">/</span><button type="button" class="bl" data-action="users" ${ui.view === 'users' ? 'aria-current="page"' : ''}>Users</button>
+    <span class="sep">/</span><button type="button" class="bl" data-action="rules" ${ui.view === 'rules' ? 'aria-current="page"' : ''}>Rules</button>
+    ${isMod() ? `<span class="sep">/</span><button type="button" class="bl" data-action="staff" ${ui.view === 'staff' ? 'aria-current="page"' : ''}>Staff${staffN ? `<span class="cnt">${staffN}</span>` : ''}</button>` : ''}</nav></div></header>
+    <main class="main gut">${timeoutBanner}${main}
+    <div class="foot"><span>Threads <b>${G.threads.length}</b></span><span>Users <b>${Object.values(G.users).filter(u => u.status === 'approved').length}</b></span>${nu ? `<span>Newest user <b>${esc(nu.username)}</b></span>` : ''}<span>Board wipes <b>${esc(w.text)}</b> (${w.days} ${w.days === 1 ? 'day' : 'days'})</span></div></main>`;
+}
+function newestUser() {
+  const a = Object.values(G.users).filter(u => u.status === 'approved' && u.role !== 'owner').sort((x, y) => ms(y.createdAt) - ms(x.createdAt));
+  return a[0] || null;
+}
+const sortedThreads = sec => G.threads.filter(t => !sec || t.section === sec).sort((a, b) => ms(b.bumpedAt) - ms(a.bumpedAt) || ms(b.createdAt) - ms(a.createdAt));
+const findThread = id => G.threads.find(t => t.id === id);
+function rankOf(t) { return sortedThreads(t.section).findIndex(x => x.id === t.id) + 1; }
+const rankHTML = before => `<div class="rank"><span>#${before}</span><span>&gt;&gt;</span><span>#1</span></div>`;
+
+function postRow(t, i, showBoard) {
+  return `<article class="post${i === 0 ? ' top1' : ''}"><button type="button" class="rowmain" data-action="open" data-id="${t.id}">${av(t.authorUid, 44, t.authorName)}
+    <span style="min-width:0"><span class="ptitle">${esc(t.title)}${safeImg(t.image) ? ' <span class="tag">IMG</span>' : ''}</span>
+    <span class="psub">${showBoard ? esc(secById(t.section) ? secById(t.section).name : '') + ' · ' : ''}${esc(t.authorName)} · ${t.replyCount} ${t.replyCount === 1 ? 'reply' : 'replies'}</span></span></button>
+    <div class="rowside"><span class="time">${ago(ms(t.bumpedAt))}</span><button type="button" class="btn sm" data-action="bump" data-id="${t.id}" aria-label="Bump ${esc(t.title)}">Bump</button></div></article>`;
+}
+function homeHTML() {
+  const w = wipeInfo(), nu = newestUser(), recent = sortedThreads().slice(0, 6);
+  const nuBox = nu ? `<div class="newest" style="flex:1 1 320px">${av(nu.id, 64)}<div><span class="label">Newest user</span><div class="name">${esc(nu.username)}</div><div class="desc">Joined ${ago(ms(nu.createdAt))}</div></div></div>` : '';
+  return `<div><h1 class="h1">Vee-Forums</h1><div class="desc">Reply or bump a thread and it jumps to the top. Everything is deleted at the start of each month. Read the <button type="button" class="bl" style="color:var(--amber);padding:0;font-family:inherit;text-transform:none;letter-spacing:0;font-size:inherit" data-action="rules">rules</button> before you post.</div></div>
+    <div class="tbl"><div class="hd">Boards</div>${SECTIONS.map(s => {
+      const ps = sortedThreads(s.id), top = ps[0], rep = ps.reduce((a, p) => a + (p.replyCount || 0), 0);
+      return `<button type="button" class="brow" data-action="section" data-id="${s.id}"><span><span class="bn">${esc(s.name)}</span><span class="desc">${esc(s.desc)}</span></span><span class="num hide">${ps.length} threads / ${rep} replies</span><span class="num">${top ? ago(ms(top.bumpedAt)) : 'empty'}</span></button>`;
+    }).join('')}</div>
+    <div class="row" style="align-items:stretch">${nuBox}<div class="box" style="flex:1 1 240px;justify-content:center"><span class="label">Monthly wipe</span><span class="warn">${w.days} ${w.days === 1 ? 'day' : 'days'} left (${esc(w.text)})</span></div></div>
+    <span class="label">Latest activity</span>${recent.length ? `<div class="list">${recent.map((t, i) => postRow(t, i, true)).join('')}</div>` : '<div class="empty">No threads yet this month. Be the first to post.</div>'}`;
+}
+function catCard(t, i) {
+  const img = safeImg(t.image);
+  return `<article class="cat${i === 0 ? ' top1' : ''}"><button type="button" class="catmain" data-action="open" data-id="${t.id}"><span class="thumb">${img ? `<img src="${img}" alt="">` : av(t.authorUid, 64, t.authorName)}</span>
+    <span class="cstats">R: ${t.replyCount} / B: ${t.bumps}</span><span class="ct">${esc(t.title)}</span><span class="cs">${esc(t.body)}</span>
+    <span class="cby">${av(t.authorUid, 22, t.authorName)}${nameHTML(t.authorUid, t.authorName)}<span>· ${ago(ms(t.bumpedAt))}</span></span></button>
+    <button type="button" class="btn sm catbump" data-action="bump" data-id="${t.id}" aria-label="Bump ${esc(t.title)}">Bump</button></article>`;
+}
+function sectionHTML() {
+  const s = secById(ui.section);
+  if (!s) { ui.view = 'home'; return homeHTML(); }
+  const threads = sortedThreads(s.id);
+  let h = `<div><h1 class="h1">${esc(s.name)}</h1><div class="desc">${esc(s.desc)}</div></div>
+    <div class="row"><button type="button" class="btn" data-action="compose" ${isTimedOut() ? 'disabled' : ''}>${ui.composing ? 'Cancel' : 'Start a new thread'}</button>
+    <button type="button" class="btn sm ghost" data-action="layout" data-l="catalog" aria-pressed="${ui.layout === 'catalog'}">Catalog</button>
+    <button type="button" class="btn sm ghost" data-action="layout" data-l="list" aria-pressed="${ui.layout === 'list'}">List</button>
+    <span class="fine">Newest, replied and bumped threads rise to the top.</span></div>`;
+  if (ui.composing) h += `<form class="form" data-form="post"><label class="l" for="p-title">Subject</label><input id="p-title" type="text" maxlength="70" required placeholder="What is this about?"><label class="l" for="p-body">Comment</label><textarea id="p-body" maxlength="1500" required></textarea>${imgPicker('post')}<div class="row"><button class="btn" type="submit">Post thread</button></div></form>`;
+  if (!G.ready.threads) return h + '<div class="empty">Loading threads...</div>';
+  if (!threads.length) return h + `<div class="empty">Nothing here yet. Start the month with the first thread in ${esc(s.name)}.</div>`;
+  return h + (ui.layout === 'catalog' ? `<div class="catalog">${threads.map(catCard).join('')}</div>` : `<div class="list">${threads.map((t, i) => postRow(t, i, false)).join('')}</div>`);
+}
+function postBox(o) {
+  const img = safeImg(o.image);
+  const mine = o.authorUid === G.user.uid;
+  const acts = (!mine ? `<button type="button" class="btn sm ghost" data-action="report" data-kind="${o.kind}" data-rid="${o.id || ''}">Report</button>` : '') +
+    (isMod() ? `<button type="button" class="btn sm danger" data-action="delpost" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>` : '');
+  return `<div class="pb${o.op ? ' op' : ''}" id="no-${o.no}"><div class="ph">${av(o.authorUid, 26, o.authorName)}${nameHTML(o.authorUid, o.authorName)}<span>${stamp(ms(o.createdAt))}</span>
+    <button type="button" class="no" data-action="quote" data-no="${o.no}" aria-label="Quote post ${o.no}">No.${o.no}</button>${o.op ? '<span class="tag dim">OP</span>' : ''}<span class="acts">${acts}</span></div>
+    <div class="pbody">${img ? `<button type="button" class="imgbtn" data-action="zoom" aria-label="Toggle image size"><img src="${img}" alt="Image posted by ${esc(o.authorName)}"></button>` : ''}${o.title ? `<div class="h1" style="font-size:22px;margin-bottom:6px">${esc(o.title)}</div>` : ''}<div class="txt">${fmt(o.text)}</div></div></div>`;
+}
+function threadHTML() {
+  const t = findThread(ui.threadId);
+  if (!t) { if (!G.ready.threads) return '<div class="empty">Loading thread...</div>'; ui.view = 'section'; return sectionHTML(); }
+  const s = secById(t.section);
+  return `<div class="row"><button type="button" class="btn sm ghost" data-action="section" data-id="${t.section}">&lt; ${esc(s.name)}</button><button type="button" class="btn sm" data-action="bump" data-id="${t.id}">Bump to top</button><span class="label">Rank #${rankOf(t)} · R: ${t.replyCount}</span></div>` +
+    postBox({ id: t.id, kind: 'thread', op: true, no: t.no, authorUid: t.authorUid, authorName: t.authorName, createdAt: t.createdAt, text: t.body, image: t.image, title: t.title }) +
+    G.replies.map(r => postBox({ id: r.id, kind: 'reply', op: false, no: r.no, authorUid: r.authorUid, authorName: r.authorName, createdAt: r.createdAt, text: r.text, image: r.image })).join('') +
+    `<form class="form" data-form="reply"><label class="l" for="r-text">Reply (this bumps the thread to the top)</label><textarea id="r-text" maxlength="800" required style="min-height:90px" ${isTimedOut() ? 'disabled' : ''}></textarea>${imgPicker('reply')}
+    <div class="row"><button class="btn" type="submit" ${isTimedOut() ? 'disabled' : ''}>Post reply</button><span class="fine">Click a post number to quote it. Start a line with &gt; for green text.</span></div></form>`;
+}
+function userCard(u, i) {
+  return `<div class="user">${av(u.id, 44)}<div class="nm">${esc(u.username)} ${badge(u.role)}${i === 0 && u.role !== 'owner' ? ' <span class="tag">NEW</span>' : ''}<div class="joined">Joined ${dateStr(ms(u.createdAt))}</div></div></div>`;
+}
+function usersHTML() {
+  const all = Object.values(G.users).filter(u => u.status === 'approved');
+  const staff = all.filter(u => rk(u.role) >= 1).sort((a, b) => rk(b.role) - rk(a.role) || a.username.localeCompare(b.username));
+  const members = all.filter(u => u.role !== 'owner').sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+  const nu = newestUser();
+  return `<h1 class="h1">Users</h1>${nu ? `<div class="newest">${av(nu.id, 72)}<div><span class="label">Newest user</span><div class="name">${esc(nu.username)}</div><div class="desc">Joined ${ago(ms(nu.createdAt))}</div></div></div>` : ''}
+    <span class="label">Staff</span><div class="users">${staff.map(userCard).join('')}</div>
+    <span class="label">${members.length} members, newest first</span><div class="users">${members.map(userCard).join('')}</div>`;
+}
+function profileHTML() {
+  const u = G.me;
+  return `<h1 class="h1">Your profile</h1><div class="form"><div class="row">${av(u.id, 96)}<div><div style="font-size:30px">${esc(u.username)} ${badge(u.role)}</div><div class="desc">Joined ${dateStr(ms(u.createdAt))}</div></div></div>
+    <div class="row"><label class="btn sm" for="img-pfp">Upload profile picture (under 2 MB)</label><input class="sr" id="img-pfp" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-img="pfp">${safeImg(u.pfp) ? '<button type="button" class="btn sm ghost" data-action="resetpfp">Use default picture</button>' : ''}</div>
+    <div class="fine">Everyone starts with the default picture. Your picture shows on your posts.</div></div>`;
+}
+function rulesHTML() {
+  return `<h1 class="h1">Rules</h1><div class="desc">Staff pick the rule that was broken every time they remove a post.</div>
+    <div class="rulelist">${RULES.map((r, i) => `<div class="rule"><span class="rt">${i + 1}. ${esc(r.text)}</span><span class="tag ${r.ban ? 'admin' : ''}">${esc(r.penalty)}</span></div>`).join('')}</div>
+    <div class="box" style="max-width:760px"><span class="h2">How enforcement works</span>
+    <span>Mods remove posts, time members out, and ban for NSFW. After removing a post a mod can ask an admin to issue a warning. Admins warn only when a mod sends a request, and only once per request. Everyone can report a post with the Report button and a mod will review it.</span>
+    <span class="fine">New accounts are approved by admins within 72 hours.</span></div>`;
+}
+
+/* ---- staff ---- */
+function staffTabs() {
+  const tabs = [['reports', 'Reports', true, isMod() ? openReports().length : 0], ['requests', 'Warn requests', isAdmin(), isAdmin() ? pendingReqs().length : 0], ['approvals', 'Approvals', isAdmin(), isAdmin() ? pendingUsers().length : 0], ['members', 'Members', true, 0], ['log', 'Mod log', true, 0]];
+  return `<div class="subtabs">${tabs.filter(t => t[2]).map(t => `<button type="button" class="btn sm ${ui.staffTab === t[0] ? '' : 'ghost'}" data-action="stafftab" data-tab="${t[0]}" aria-pressed="${ui.staffTab === t[0]}">${t[1]}${t[3] ? ' (' + t[3] + ')' : ''}</button>`).join('')}</div>`;
+}
+function reportsHTML() {
+  const open = openReports(), done = G.reports.filter(r => r.status !== 'open').slice(0, 15);
+  const card = r => {
+    const live = r.status === 'open';
+    const gone = !findThread(r.threadId);
+    return `<div class="item ${live ? 'open' : ''}"><div class="row"><span class="h2">${esc(ruleName(r.rule))}</span><span class="tag dim">${r.kind === 'reply' ? 'REPLY' : 'THREAD'} No.${esc(r.postNo)}</span><span class="fine">${ago(ms(r.createdAt))}</span>${live ? '' : `<span class="tag dim">${esc(r.status.toUpperCase())}</span>`}</div>
+      <div>Reported <b style="font-weight:400">${esc(r.targetName)}</b> by ${esc(r.reporterName)}</div>${r.excerpt ? `<div class="q">${esc(r.excerpt)}</div>` : ''}${r.details ? `<div class="fine">Reporter note: ${esc(r.details)}</div>` : ''}
+      ${live ? `<div class="row">${gone ? '<span class="fine">Post is already gone.</span>' : `<button type="button" class="btn sm ghost" data-action="open" data-id="${esc(r.threadId)}">View thread</button><button type="button" class="btn sm danger" data-action="reviewreport" data-id="${r.id}">Review and delete</button>`}<button type="button" class="btn sm ghost" data-action="dismissreport" data-id="${r.id}">Dismiss</button></div>` : `<div class="fine">${esc(r.outcome || '')} · by ${esc(r.handledByName || '')}</div>`}</div>`;
+  };
+  return `<span class="label">${open.length} open reports</span>${open.length ? open.map(card).join('') : '<div class="empty">No open reports.</div>'}${done.length ? `<span class="label">Recently handled</span>${done.map(card).join('')}` : ''}`;
+}
+function requestsHTML() {
+  const p = pendingReqs(), done = G.warnReqs.filter(r => r.status !== 'pending').slice(0, 15);
+  const card = r => {
+    const live = r.status === 'pending', self = r.targetUid === G.user.uid, tu = userOf(r.targetUid);
+    const can = live && !self && tu && actOn(tu.role);
+    return `<div class="item ${live ? 'open' : ''}"><div class="row"><span class="h2">${esc(ruleName(r.rule))}</span><span class="tag dim">POST No.${esc(r.postNo)}</span><span class="fine">${ago(ms(r.createdAt))}</span>${live ? '' : `<span class="tag dim">${esc(r.status.toUpperCase())}</span>`}</div>
+      <div>Mod <b style="font-weight:400">${esc(r.requestedByName)}</b> asks you to warn <b style="font-weight:400">${esc(r.targetName)}</b></div>${r.excerpt ? `<div class="q">${esc(r.excerpt)}</div>` : ''}${r.note ? `<div class="fine">Mod note: ${esc(r.note)}</div>` : ''}
+      ${live ? `<div class="row">${can ? `<button type="button" class="btn sm danger" data-action="warnreq" data-id="${r.id}">Issue warning (once)</button>` : `<span class="fine">${self ? 'You cannot warn yourself.' : 'You cannot act on this member.'}</span>`}<button type="button" class="btn sm ghost" data-action="dismissreq" data-id="${r.id}">Dismiss</button></div>` : `<div class="fine">by ${esc(r.handledByName || '')}</div>`}</div>`;
+  };
+  return `<span class="label">${p.length} waiting</span>${p.length ? p.map(card).join('') : '<div class="empty">No warning requests.</div>'}${done.length ? `<span class="label">Recently handled</span>${done.map(card).join('') }` : ''}`;
+}
+function approvalsHTML() {
+  const list = pendingUsers();
+  return `<span class="label">${list.length} waiting for approval</span>${list.length ? list.map(u => {
+    const a = G.apps[u.id], due = ms(u.createdAt) + 72 * HOUR, over = due < Date.now();
+    return `<div class="item open"><div class="row"><span class="h2">${esc(u.username)}</span><span class="fine">applied ${ago(ms(u.createdAt))}</span><span class="tag ${over ? 'admin' : 'dim'}">${over ? 'OVERDUE' : 'DUE ' + dateStr(due)}</span></div>
+      <div class="q">${a ? esc(a.reason) : '(no reason found)'}</div><div class="row"><button type="button" class="btn sm" data-action="approve" data-uid="${u.id}">Approve</button><button type="button" class="btn sm danger" data-action="deny" data-uid="${u.id}">Deny</button></div></div>`;
+  }).join('') : '<div class="empty">Nobody is waiting.</div>'}`;
+}
+function membersHTML() {
+  const list = Object.values(G.users).filter(u => u.id !== G.user.uid && u.role !== 'owner' && (u.status === 'approved' || u.status === 'banned')).sort((a, b) => rk(b.role) - rk(a.role) || a.username.localeCompare(b.username));
+  return `<span class="label">${list.length} members</span><div class="list">${list.map(u => {
+    const can = actOn(u.role), to = u.timeoutUntil ? ms(u.timeoutUntil) : 0, timed = to > Date.now();
+    return `<div class="item"><div class="row">${av(u.id, 36)}<span class="h2">${esc(u.username)}</span>${badge(u.role)}${u.status === 'banned' ? '<span class="tag admin">BANNED</span>' : ''}${timed ? `<span class="tag warn">TIMEOUT to ${esc(stamp(to))}</span>` : ''}</div>
+      ${can ? `<div class="row">
+        <select id="to-${u.id}" aria-label="Timeout length">${DURS.map(d => `<option value="${d[1]}">${d[0]}</option>`).join('')}</select><button type="button" class="btn sm" data-action="timeout" data-uid="${u.id}">Time out</button>
+        ${isAdmin() && timed ? `<button type="button" class="btn sm ghost" data-action="untimeout" data-uid="${u.id}">Remove timeout</button>` : ''}
+        ${isAdmin() ? (u.status === 'banned' ? `<button type="button" class="btn sm ghost" data-action="unban" data-uid="${u.id}">Unban</button>` : `<button type="button" class="btn sm danger" data-action="ban" data-uid="${u.id}">Ban</button>`) : ''}
+        ${isOwnerTier() && u.status === 'approved' ? `<select id="role-${u.id}" aria-label="Role">${['user', 'mod', 'admin', 'coowner'].map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r === 'user' ? 'Member' : r === 'coowner' ? 'Co-owner' : r[0].toUpperCase() + r.slice(1)}</option>`).join('')}</select><button type="button" class="btn sm" data-action="setrole" data-uid="${u.id}">Set rank</button><button type="button" class="btn sm danger" data-action="warnnow" data-uid="${u.id}">Warn</button>` : ''}
+      </div>` : '<div class="fine">Equal or higher rank. You cannot act on this member.</div>'}</div>`;
+  }).join('')}</div>`;
+}
+function logHTML() {
+  return `<span class="label">Latest staff actions</span>${G.modLog.length ? `<div class="list">${G.modLog.map(l => `<div class="item"><div class="row"><span class="tag dim">${esc(l.type.toUpperCase())}</span><span>${esc(l.byName)} → ${esc(l.targetName || '')}</span><span class="fine">${ago(ms(l.createdAt))}</span></div>${l.rule ? `<div class="fine">Rule: ${esc(ruleName(l.rule))}${l.postNo ? ' · post No.' + esc(l.postNo) : ''}</div>` : ''}${l.detail ? `<div class="fine">${esc(l.detail)}</div>` : ''}${l.note ? `<div class="fine">Note: ${esc(l.note)}</div>` : ''}</div>`).join('')}</div>` : '<div class="empty">No actions yet.</div>'}`;
+}
+function staffHTML() {
+  if (!isMod()) { ui.view = 'home'; return homeHTML(); }
+  if (ui.staffTab === 'requests' && !isAdmin()) ui.staffTab = 'reports';
+  if (ui.staffTab === 'approvals' && !isAdmin()) ui.staffTab = 'reports';
+  const body = { reports: reportsHTML, requests: requestsHTML, approvals: approvalsHTML, members: membersHTML, log: logHTML }[ui.staffTab]();
+  return `<h1 class="h1">Staff</h1>${staffTabs()}${isAdmin() ? `<div class="row"><button type="button" class="btn sm ghost" data-action="purge">Clean up old data</button><span class="fine">This also runs by itself when an admin opens the site. It removes last month's posts, threads past the newest ${MAX_THREADS}, and finished reports and requests older than 30 days.</span></div>` : ''}${body}`;
+}
+
+function render(keepPending) {
+  if (!keepPending) { pending.post = null; pending.reply = null; }
+  if (!configured) { $app.innerHTML = setupHTML(); return; }
+  if (!G.user) { $app.innerHTML = gateHTML(); return; }
+  if (G.err === 'account') { $app.innerHTML = statusHTML('Could not load your account', '<span>Check your internet and reload the page.</span>', 'bad'); return; }
+  if (!G.meLoaded) { $app.innerHTML = '<div class="gate gut"><div class="empty">Loading...</div></div>'; return; }
+  if (!G.me) { $app.innerHTML = statusHTML('Finishing your account', '<span>Your login exists but your profile was not created. Log out and request the account again, or ask an admin.</span>', 'bad'); return; }
+  if (G.me.status === 'pending') { $app.innerHTML = pendingHTML(); return; }
+  if (G.me.status === 'denied') { $app.innerHTML = statusHTML('Application not approved', '<span>Staff did not approve this account. You cannot post or read the forums.</span>', 'bad'); return; }
+  if (G.me.status === 'banned') { $app.innerHTML = statusHTML('Account banned', '<span>This account was banned for breaking the rules.</span>', 'bad'); return; }
+  ensureReplies();
+  let main;
+  switch (ui.view) {
+    case 'users': main = usersHTML(); break;
+    case 'profile': main = profileHTML(); break;
+    case 'rules': main = rulesHTML(); break;
+    case 'staff': main = staffHTML(); break;
+    case 'thread': main = threadHTML(); break;
+    case 'section': main = sectionHTML(); break;
+    default: main = homeHTML();
+  }
+  $app.innerHTML = shell(main);
+}
+function softRender() {
+  const a = document.activeElement;
+  const typing = a && a.matches && a.matches('textarea, input[type=text], input[type=password]') && a.value && $app.contains(a);
+  if (typing || pending.post || pending.reply || M) return;
+  render(true);
+}
+function go(view, sec) { ui.view = view; if (sec !== undefined) ui.section = sec; ui.composing = false; render(); window.scrollTo(0, 0); }
+
+/* ---------- forum actions ---------- */
+async function doBump(id) {
+  const t = findThread(id); if (!t) return;
+  if (isTimedOut()) return pop('Timed out', 'You cannot bump while timed out.', 'bad');
+  const before = rankOf(t);
+  const wait = ms(t.bumpedAt) + 5 * MIN - Date.now();
+  if (before === 1) return pop('Already on top', 'This thread is first in its board. Bump it again once another thread passes it.', 'bad');
+  if (wait > 0) return pop('Cooldown', `This thread was active a moment ago. You can bump it in ${Math.ceil(wait / MIN)} min.`, 'bad');
+  try {
+    await updateDoc(doc(db, 'threads', id), { bumpedAt: serverTimestamp(), bumps: increment(1) });
+    pop('Bumped', `Your bump moved this thread to the top of ${secById(t.section).name}.`, '', rankHTML(before));
+  } catch (e) { pop('Could not bump', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function doNewPost() {
+  const title = document.getElementById('p-title').value.trim(), body = document.getElementById('p-body').value.trim();
+  if (!title || !body || ui.busy) return;
+  if (isTimedOut()) return pop('Timed out', 'You cannot post while timed out.', 'bad');
+  ui.busy = true;
+  try {
+    const counter = doc(db, 'meta', 'counter'), ref = doc(collection(db, 'threads'));
+    await runTransaction(db, async tx => {
+      const c = await tx.get(counter), no = c.data().n + 1;
+      tx.update(counter, { n: no });
+      tx.set(ref, { section: ui.section, title, body, authorUid: G.user.uid, authorName: G.me.username, no, image: pending.post, createdAt: serverTimestamp(), bumpedAt: serverTimestamp(), bumps: 0, replyCount: 0 });
+    });
+    ui.composing = false; pending.post = null; render();
+    pop('Posted', `Your thread is first in ${secById(ui.section).name}.`);
+  } catch (e) { pop('Could not post', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+  ui.busy = false;
+}
+async function doReply() {
+  const text = document.getElementById('r-text').value.trim();
+  const t = findThread(ui.threadId);
+  if (!t || !text || ui.busy) return;
+  if (isTimedOut()) return pop('Timed out', 'You cannot reply while timed out.', 'bad');
+  ui.busy = true;
+  const before = rankOf(t);
+  try {
+    const counter = doc(db, 'meta', 'counter'), tref = doc(db, 'threads', t.id), rref = doc(collection(db, 'threads', t.id, 'replies'));
+    let no = 0;
+    await runTransaction(db, async tx => {
+      const c = await tx.get(counter), th = await tx.get(tref);
+      if (!th.exists()) throw new Error('gone');
+      no = c.data().n + 1;
+      tx.update(counter, { n: no });
+      tx.update(tref, { bumpedAt: serverTimestamp(), replyCount: th.data().replyCount + 1 });
+      tx.set(rref, { authorUid: G.user.uid, authorName: G.me.username, no, text, image: pending.reply, createdAt: serverTimestamp() });
+    });
+    pending.reply = null; render();
+    if (before === 1) pop('Reply posted', `The thread was already on top of ${secById(t.section).name}.`);
+    else pop('Reply bumped', `Your reply moved this thread to the top of ${secById(t.section).name}.`, '', rankHTML(before));
+    setTimeout(() => { const el = document.getElementById('no-' + no); if (el) el.scrollIntoView({ block: 'center' }); }, 400);
+  } catch (e) { pop('Could not reply', e.message === 'gone' ? 'This thread was removed.' : 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+  ui.busy = false;
+}
+
+/* ---------- reports ---------- */
+function postFrom(kind, rid) {
+  const t = findThread(ui.threadId); if (!t) return null;
+  if (kind === 'thread') return { kind, threadId: t.id, replyId: null, no: t.no, authorUid: t.authorUid, authorName: t.authorName, text: t.title + ' — ' + t.body };
+  const r = G.replies.find(x => x.id === rid); if (!r) return null;
+  return { kind, threadId: t.id, replyId: r.id, no: r.no, authorUid: r.authorUid, authorName: r.authorName, text: r.text };
+}
+function openReport(kind, rid) {
+  const p = postFrom(kind, rid); if (!p) return;
+  openModal({ kind: 'report', post: p, rule: null });
+}
+async function submitReport() {
+  if (!M.rule) return pop('Pick a reason', 'Choose which rule this post breaks.', 'bad');
+  const p = M.post, details = (document.getElementById('m-note').value || '').trim().slice(0, 300);
+  const id = G.user.uid + '_' + (p.replyId || p.threadId);
+  try {
+    await setDoc(doc(db, 'reports', id), { kind: p.kind, threadId: p.threadId, replyId: p.replyId, targetUid: p.authorUid, targetName: p.authorName, postNo: p.no, excerpt: p.text.slice(0, 300), rule: M.rule, details, reporterUid: G.user.uid, reporterName: G.me.username, status: 'open', createdAt: serverTimestamp() });
+    closeModal(); pop('Report sent', 'A mod will review it. Thank you for helping.');
+  } catch (e) { closeModal(); pop('Already reported', 'You already reported this post, or it could not be sent.', 'bad'); }
+}
+async function dismissReport(id) {
+  try { await updateDoc(doc(db, 'reports', id), { status: 'dismissed', handledBy: G.user.uid, handledByName: G.me.username, handledAt: serverTimestamp(), outcome: 'Dismissed, no rule broken' }); }
+  catch (e) { pop('Could not dismiss', getErr(e), 'bad'); }
+}
+
+/* ---------- deleting posts ---------- */
+function logDoc(b, type, target, extra) {
+  b.set(doc(collection(db, 'modLog')), Object.assign({ type, byUid: G.user.uid, byName: G.me.username, targetUid: target ? target.id : '', targetName: target ? target.username : '', rule: null, note: '', postNo: null, detail: '', createdAt: serverTimestamp() }, extra || {}));
+}
+function openDelete(kind, rid, reportId, presetRule) {
+  const p = postFrom(kind, rid); if (!p) return;
+  openModal({ kind: 'delete', post: p, reportId: reportId || null, rule: presetRule || null, timeout: true, dur: String(HOUR), warnReq: true, warnNow: false });
+}
+async function executeDelete() {
+  const m = M, p = m.post;
+  if (!m.rule || m.rule === 'other') return pop('Pick a rule', 'Choose the rule that was broken.', 'bad');
+  const rule = ruleById(m.rule), note = (document.getElementById('m-note').value || '').trim().slice(0, 300);
+  const target = userOf(p.authorUid), can = target && p.authorUid !== G.user.uid && actOn(target.role);
+  ui.busy = true;
+  try {
+    const b = writeBatch(db);
+    if (p.replyId) b.delete(doc(db, 'threads', p.threadId, 'replies', p.replyId));
+    else { const rs = await getDocs(collection(db, 'threads', p.threadId, 'replies')); rs.forEach(d => b.delete(d.ref)); b.delete(doc(db, 'threads', p.threadId)); }
+    logDoc(b, 'delete', target || { id: p.authorUid, username: p.authorName }, { rule: rule.id, note, postNo: p.no, detail: p.replyId ? 'Reply removed' : 'Thread removed' });
+    let outcome = 'Deleted (' + rule.text + ')';
+    if (can && rule.ban) {
+      b.update(doc(db, 'users', target.id), { status: 'banned' });
+      logDoc(b, 'ban', target, { rule: rule.id, note, postNo: p.no, detail: 'Instant ban for NSFW' });
+      outcome += ', user banned';
+    } else if (can) {
+      if (m.timeout) {
+        const until = Timestamp.fromMillis(Date.now() + Number(m.dur));
+        b.update(doc(db, 'users', target.id), { timeoutUntil: until });
+        logDoc(b, 'timeout', target, { rule: rule.id, note, postNo: p.no, detail: 'Timed out for ' + (DURS.find(d => String(d[1]) === m.dur) || ['?'])[0] });
+        outcome += ', timed out';
+      }
+      if (G.me.role === 'mod' && m.warnReq) {
+        b.set(doc(collection(db, 'warnRequests')), { targetUid: target.id, targetName: target.username, rule: rule.id, postNo: p.no, excerpt: p.text.slice(0, 300), note, requestedBy: G.user.uid, requestedByName: G.me.username, status: 'pending', createdAt: serverTimestamp() });
+        logDoc(b, 'warnRequest', target, { rule: rule.id, note, postNo: p.no, detail: 'Warning requested from admins' });
+        outcome += ', warning requested';
+      }
+      if (isOwnerTier() && m.warnNow) {
+        b.set(doc(collection(db, 'warnings')), { targetUid: target.id, targetName: target.username, rule: rule.id, note, byUid: G.user.uid, byName: G.me.username, requestId: null, seen: false, createdAt: serverTimestamp() });
+        logDoc(b, 'warn', target, { rule: rule.id, note, postNo: p.no, detail: 'Warning issued' });
+        outcome += ', warned';
+      }
+    }
+    if (m.reportId) b.update(doc(db, 'reports', m.reportId), { status: 'actioned', handledBy: G.user.uid, handledByName: G.me.username, handledAt: serverTimestamp(), outcome });
+    await b.commit();
+    closeModal();
+    if (!p.replyId && ui.view === 'thread') { ui.view = 'section'; }
+    render();
+    pop('Post removed', outcome + '.');
+  } catch (e) { pop('Could not finish', 'Something went wrong (' + getErr(e) + '). Nothing was changed.', 'bad'); }
+  ui.busy = false;
+}
+
+/* ---------- modal rendering ---------- */
+function renderModal() {
+  if (!M) { closeModal(); return; }
+  $modal.hidden = false;
+  if (M.kind === 'report') {
+    $modal.innerHTML = `<form class="modal" data-form="report"><h2 class="h1" style="font-size:22px">Report post No.${esc(M.post.no)}</h2><div class="fine">By ${esc(M.post.authorName)}. A mod will review it.</div>
+      ${RULES.concat([{ id: 'other', text: 'Something else' }]).map(r => `<label class="opt"><input type="radio" name="rule" value="${r.id}" ${M.rule === r.id ? 'checked' : ''}><span>${esc(r.text)}</span></label>`).join('')}
+      <label class="l label" for="m-note">Anything else the mods should know (optional)</label><textarea id="m-note" maxlength="300"></textarea>
+      <div class="row"><button class="btn" type="submit">Send report</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
+    return;
+  }
+  if (M.kind === 'warnnow') {
+    const u = userOf(M.uid);
+    $modal.innerHTML = `<form class="modal bad" data-form="warnnow"><h2 class="h1" style="font-size:22px">Warn ${esc(u ? u.username : '')}</h2>
+      <span class="label">Rule broken (required)</span>${RULES.map(r => `<label class="opt"><input type="radio" name="rule" value="${r.id}" ${M.rule === r.id ? 'checked' : ''}><span>${esc(r.text)}<small>${esc(r.penalty)}</small></span></label>`).join('')}
+      <label class="label" for="m-note">Note shown to the member (optional)</label><textarea id="m-note" maxlength="300"></textarea>
+      <div class="row"><button class="btn danger" type="submit">Send warning</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
+    return;
+  }
+  if (M.kind === 'delete') {
+    const p = M.post, target = userOf(p.authorUid), can = target && p.authorUid !== G.user.uid && actOn(target.role);
+    const rule = ruleById(M.rule), isBan = rule && rule.ban;
+    let opts = '';
+    if (!M.rule) opts = '<div class="fine">Pick the rule that was broken. This is required.</div>';
+    else if (!can) opts = '<div class="fine">The post will be deleted. You cannot punish this member (same or higher rank, or yourself).</div>';
+    else if (isBan) opts = `<div class="stripe">NSFW is an instant ban. ${esc(target.username)} will be banned right away.</div>`;
+    else {
+      opts = `<label class="opt"><input type="checkbox" data-opt="timeout" ${M.timeout ? 'checked' : ''}><span>Time out ${esc(target.username)}<small>They can read but not post.</small></span></label>
+        ${M.timeout ? `<div class="row"><span class="fine">Length</span><select id="m-dur" aria-label="Timeout length">${DURS.map(d => `<option value="${d[1]}" ${String(d[1]) === M.dur ? 'selected' : ''}>${d[0]}</option>`).join('')}</select></div>` : ''}`;
+      if (G.me.role === 'mod') opts += `<label class="opt"><input type="checkbox" data-opt="warnReq" ${M.warnReq ? 'checked' : ''}><span>Ask an admin to warn them<small>Admins can only warn when a mod sends this request.</small></span></label>`;
+      else if (isOwnerTier()) opts += `<label class="opt"><input type="checkbox" data-opt="warnNow" ${M.warnNow ? 'checked' : ''}><span>Issue a warning now</span></label>`;
+      else opts += '<div class="fine">Admins warn only from a mod\'s request, so no warning option here.</div>';
+    }
+    $modal.innerHTML = `<form class="modal bad" data-form="delete"><h2 class="h1" style="font-size:22px">Delete ${p.replyId ? 'reply' : 'thread'} No.${esc(p.no)}</h2><div class="fine">By ${esc(p.authorName)}${p.replyId ? '' : '. Deleting a thread also deletes its replies.'}</div>
+      <div class="q" style="border-left:3px solid var(--line);padding-left:10px;overflow-wrap:anywhere">${esc(p.text.slice(0, 200))}</div>
+      <span class="label">Rule broken (required)</span>${RULES.map(r => `<label class="opt"><input type="radio" name="rule" value="${r.id}" ${M.rule === r.id ? 'checked' : ''}><span>${esc(r.text)}<small>${esc(r.penalty)}</small></span></label>`).join('')}
+      ${opts}<label class="label" for="m-note">Note for the log (optional)</label><textarea id="m-note" maxlength="300"></textarea>
+      <div class="row"><button class="btn danger" type="submit" ${M.rule ? '' : 'disabled'}>Delete post</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
+  }
+}
+
+/* ---------- staff actions ---------- */
+async function simpleUserUpdate(uid, fields, type, detail) {
+  const u = userOf(uid); if (!u) return;
+  try {
+    const b = writeBatch(db);
+    b.update(doc(db, 'users', uid), fields);
+    logDoc(b, type, u, { detail });
+    await b.commit();
+    pop('Done', detail + ': ' + u.username + '.');
+  } catch (e) { pop('Could not do that', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function warnFromRequest(id) {
+  const r = G.warnReqs.find(x => x.id === id); if (!r) return;
+  try {
+    const b = writeBatch(db), tu = userOf(r.targetUid);
+    b.update(doc(db, 'warnRequests', id), { status: 'warned', handledBy: G.user.uid, handledByName: G.me.username, handledAt: serverTimestamp() });
+    b.set(doc(collection(db, 'warnings')), { targetUid: r.targetUid, targetName: r.targetName, rule: r.rule, note: r.note || '', byUid: G.user.uid, byName: G.me.username, requestId: id, seen: false, createdAt: serverTimestamp() });
+    logDoc(b, 'warn', tu || { id: r.targetUid, username: r.targetName }, { rule: r.rule, postNo: r.postNo, detail: 'Warning issued from request by ' + r.requestedByName });
+    await b.commit();
+    pop('Warning sent', r.targetName + ' was warned. This request is now closed.');
+  } catch (e) { pop('Could not warn', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function dismissRequest(id) {
+  const r = G.warnReqs.find(x => x.id === id); if (!r) return;
+  try {
+    const b = writeBatch(db);
+    b.update(doc(db, 'warnRequests', id), { status: 'dismissed', handledBy: G.user.uid, handledByName: G.me.username, handledAt: serverTimestamp() });
+    logDoc(b, 'warnDismiss', userOf(r.targetUid) || { id: r.targetUid, username: r.targetName }, { rule: r.rule, postNo: r.postNo, detail: 'Warning request dismissed' });
+    await b.commit();
+  } catch (e) { pop('Could not dismiss', getErr(e), 'bad'); }
+}
+function openWarnNow(uid) {
+  const u = userOf(uid); if (!u) return;
+  openModal({ kind: 'warnnow', uid, rule: null });
+}
+async function submitWarnNow() {
+  const u = userOf(M.uid); if (!u || !M.rule || M.rule === 'other') return pop('Pick a rule', 'Choose the rule that was broken.', 'bad');
+  const note = (document.getElementById('m-note').value || '').trim().slice(0, 300);
+  try {
+    const b = writeBatch(db);
+    b.set(doc(collection(db, 'warnings')), { targetUid: u.id, targetName: u.username, rule: M.rule, note, byUid: G.user.uid, byName: G.me.username, requestId: null, seen: false, createdAt: serverTimestamp() });
+    logDoc(b, 'warn', u, { rule: M.rule, note, detail: 'Warning issued' });
+    await b.commit(); closeModal(); pop('Warning sent', u.username + ' was warned.');
+  } catch (e) { pop('Could not warn', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function purgeOld() {
+  let total = 0;
+  for (let i = 0; i < 10; i++) {
+    const s = await getDocs(query(collection(db, 'threads'), where('createdAt', '<', Timestamp.fromMillis(monthStartMs())), limit(20)));
+    if (s.empty) break;
+    for (const d of s.docs) {
+      const b = writeBatch(db), rs = await getDocs(collection(db, 'threads', d.id, 'replies'));
+      rs.forEach(r => b.delete(r.ref)); b.delete(d.ref); await b.commit(); total++;
+    }
+  }
+  return total;
+}
+
+async function removeThreadFully(id) {
+  const b = writeBatch(db), rs = await getDocs(collection(db, 'threads', id, 'replies'));
+  rs.forEach(r => b.delete(r.ref)); b.delete(doc(db, 'threads', id)); await b.commit();
+}
+async function deleteRefs(refs) {
+  for (let i = 0; i < refs.length; i += 400) { const b = writeBatch(db); refs.slice(i, i + 400).forEach(r => b.delete(r)); await b.commit(); }
+  return refs.length;
+}
+// Removes the oldest threads past the cap, plus finished reports, requests, decided applications and read warnings.
+async function tidy() {
+  let n = 0;
+  const cut30 = Date.now() - 30 * DAY, cut60 = Date.now() - 60 * DAY;
+  const byAge = G.threads.slice().sort((a, b) => ms(b.bumpedAt) - ms(a.bumpedAt));
+  for (const t of byAge.slice(MAX_THREADS)) { await removeThreadFully(t.id); n++; }
+  const refs = [];
+  G.reports.filter(r => r.status !== 'open' && ms(r.handledAt || r.createdAt) < cut30).forEach(r => refs.push(doc(db, 'reports', r.id)));
+  G.warnReqs.filter(r => r.status !== 'pending' && ms(r.handledAt || r.createdAt) < cut30).forEach(r => refs.push(doc(db, 'warnRequests', r.id)));
+  Object.values(G.apps).filter(a => userOf(a.id) && userOf(a.id).status !== 'pending' && ms(a.createdAt) < cut30).forEach(a => refs.push(doc(db, 'applications', a.id)));
+  const ws = await getDocs(query(collection(db, 'warnings'), where('seen', '==', true), limit(100)));
+  ws.forEach(d => { if (ms(d.data().createdAt) < cut60) refs.push(d.ref); });
+  n += await deleteRefs(refs);
+  return n;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-action]'); if (!el) return;
+  const a = el.dataset.action, d = el.dataset;
+  if (a === 'goto') { e.preventDefault(); const t = document.getElementById('no-' + d.no); if (t) { t.scrollIntoView({ block: 'center' }); t.classList.add('hl'); setTimeout(() => t.classList.remove('hl'), 1600); } return; }
+  switch (a) {
+    case 'ok': closePop(); break;
+    case 'closemodal': closeModal(); break;
+    case 'bump': doBump(d.id); break;
+    case 'open': { ui.threadId = d.id; const t = findThread(d.id); if (t) ui.section = t.section; go('thread'); break; }
+    case 'home': go('home', null); break;
+    case 'section': go('section', d.id); break;
+    case 'users': go('users'); break;
+    case 'profile': go('profile'); break;
+    case 'rules': go('rules'); break;
+    case 'staff': go('staff'); break;
+    case 'stafftab': ui.staffTab = d.tab; render(); break;
+    case 'layout': ui.layout = d.l; render(); break;
+    case 'compose': ui.composing = !ui.composing; render(); break;
+    case 'mode': ui.mode = d.mode; render(); break;
+    case 'logout': try { await signOut(auth); } catch (err) {} break;
+    case 'zoom': el.classList.toggle('zoomed'); break;
+    case 'quote': { const ta = document.getElementById('r-text'); if (ta && !ta.disabled) { ta.value += (ta.value && !/\n$/.test(ta.value) ? '\n' : '') + '>>' + d.no + '\n'; ta.focus(); ta.scrollIntoView({ block: 'center' }); } break; }
+    case 'clearimg': { pending[d.kind] = null; const inp = document.getElementById('img-' + d.kind); if (inp) inp.value = ''; setPreview(d.kind); break; }
+    case 'resetpfp': try { await updateDoc(doc(db, 'users', G.user.uid), { pfp: null }); pop('Picture reset', 'You are using the default profile picture again.'); } catch (err) { pop('Could not reset', getErr(err), 'bad'); } break;
+    case 'report': openReport(d.kind, d.rid); break;
+    case 'delpost': openDelete(d.kind, d.rid); break;
+    case 'reviewreport': { const r = G.reports.find(x => x.id === d.id); if (r) { ui.threadId = r.threadId; const t = findThread(r.threadId); if (t) ui.section = t.section; ui.view = 'thread'; ensureReplies(); const wait = setInterval(() => { const pp = r.kind === 'reply' ? G.replies.find(x => x.id === r.replyId) : findThread(r.threadId); if (pp || !findThread(r.threadId)) { clearInterval(wait); if (pp) openDelete(r.kind, r.replyId || r.threadId, r.id, r.rule === 'other' ? null : r.rule); else pop('Already gone', 'That post was already removed.', 'bad'); render(); } }, 150); setTimeout(() => clearInterval(wait), 4000); } break; }
+    case 'dismissreport': dismissReport(d.id); break;
+    case 'approve': simpleUserUpdate(d.uid, { status: 'approved' }, 'approve', 'Approved'); break;
+    case 'deny': simpleUserUpdate(d.uid, { status: 'denied' }, 'deny', 'Denied'); break;
+    case 'warnreq': warnFromRequest(d.id); break;
+    case 'dismissreq': dismissRequest(d.id); break;
+    case 'timeout': { const sel = document.getElementById('to-' + d.uid); const len = Number(sel.value); simpleUserUpdate(d.uid, { timeoutUntil: Timestamp.fromMillis(Date.now() + len) }, 'timeout', 'Timed out for ' + sel.options[sel.selectedIndex].text); break; }
+    case 'untimeout': simpleUserUpdate(d.uid, { timeoutUntil: null }, 'untimeout', 'Timeout removed'); break;
+    case 'ban': simpleUserUpdate(d.uid, { status: 'banned' }, 'ban', 'Banned'); break;
+    case 'unban': simpleUserUpdate(d.uid, { status: 'approved' }, 'unban', 'Unbanned'); break;
+    case 'setrole': { const sel = document.getElementById('role-' + d.uid); simpleUserUpdate(d.uid, { role: sel.value }, 'role', 'Rank set to ' + sel.options[sel.selectedIndex].text); break; }
+    case 'warnnow': openWarnNow(d.uid); break;
+    case 'purge': try { const n = (await purgeOld()) + (await tidy()); pop('Cleaned up', n + (n === 1 ? ' old item was' : ' old items were') + ' removed.'); } catch (err) { pop('Could not clean up', getErr(err), 'bad'); } break;
+  }
+});
+document.addEventListener('change', e => {
+  const inp = e.target.closest('input[data-img]');
+  if (inp) {
+    if (!inp.files || !inp.files[0]) return;
+    const kind = inp.dataset.img;
+    readImage(inp.files[0], kind === 'pfp' ? 192 : 1200, kind === 'pfp' ? 100000 : 800000, async (err, url) => {
+      if (err) { inp.value = ''; pop('Image rejected', err, 'bad'); return; }
+      if (kind === 'pfp') {
+        try { await updateDoc(doc(db, 'users', G.user.uid), { pfp: url }); pop('Picture updated', 'Your new profile picture is showing on your posts.'); }
+        catch (er) { pop('Could not save', 'Your picture could not be saved (' + getErr(er) + ').', 'bad'); }
+      } else { pending[kind] = url; setPreview(kind); }
+    });
+    return;
+  }
+  if (!M) return;
+  const radio = e.target.closest('input[name=rule]');
+  if (radio && $modal.contains(radio)) { M.rule = radio.value; if (M.kind === 'delete') renderModal(); return; }
+  const opt = e.target.closest('input[data-opt]');
+  if (opt) { M[opt.dataset.opt] = opt.checked; renderModal(); return; }
+  if (e.target.id === 'm-dur') M.dur = e.target.value;
+});
+document.addEventListener('submit', e => {
+  const f = e.target.closest('[data-form]'); if (!f) return;
+  e.preventDefault();
+  const k = f.dataset.form;
+  if (k === 'login') doLogin(f);
+  else if (k === 'signup') doSignup(f);
+  else if (k === 'post') doNewPost();
+  else if (k === 'reply') doReply();
+  else if (k === 'report') submitReport();
+  else if (k === 'delete') executeDelete();
+  else if (k === 'warnnow') submitWarnNow();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (M) closeModal(); else if (queue.length) closePop(); } });
+setInterval(() => { if (G.user && isApproved() && !queue.length) softRender(); }, 60000);
+
+render();
+</script>
+</body>
+</html>
