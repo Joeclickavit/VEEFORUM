@@ -277,7 +277,7 @@ const getErr = e => (e && e.code) ? e.code : String(e);
 /* ---------- avatars, names ---------- */
 function av(uid, size, nameFallback) {
   const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
-  const src = u && safeImg(u.pfp) ? u.pfp : DEFAULT_PFP;
+  const src = DEFAULT_PFP;
   const name = (u && u.username) || nameFallback || '?';
   return `<span class="av" style="--s:${size || 40}px"><b aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</b><img src="${esc(src)}" alt="" onerror="this.remove()"></span>`;
 }
@@ -584,8 +584,7 @@ function usersHTML() {
 function profileHTML() {
   const u = G.me;
   return `<h1 class="h1">Your profile</h1><div class="form"><div class="row">${av(u.id, 96)}<div><div style="font-size:30px">${esc(u.username)} ${badge(u.role)}</div><div class="desc">Joined ${dateStr(ms(u.createdAt))}</div></div></div>
-    <div class="row"><label class="btn sm" for="img-pfp">Upload profile picture (under 2 MB)</label><input class="sr" id="img-pfp" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-img="pfp">${safeImg(u.pfp) ? '<button type="button" class="btn sm ghost" data-action="resetpfp">Use default picture</button>' : ''}</div>
-    <div class="fine">Everyone starts with the default picture. Your picture shows on your posts.</div></div>`;
+    <div class="fine">Everyone uses the same profile picture. Custom pictures are turned off.</div></div>`;
 }
 function rulesHTML() {
   return `<h1 class="h1">Rules</h1><div class="desc">Staff pick the rule that was broken every time they remove a post.</div>
@@ -965,7 +964,6 @@ document.addEventListener('click', async e => {
     case 'zoom': el.classList.toggle('zoomed'); break;
     case 'quote': { const ta = document.getElementById('r-text'); if (ta && !ta.disabled) { ta.value += (ta.value && !/\n$/.test(ta.value) ? '\n' : '') + '>>' + d.no + '\n'; ta.focus(); ta.scrollIntoView({ block: 'center' }); } break; }
     case 'clearimg': { pending[d.kind] = null; const inp = document.getElementById('img-' + d.kind); if (inp) inp.value = ''; setPreview(d.kind); break; }
-    case 'resetpfp': try { await updateDoc(doc(db, 'users', G.user.uid), { pfp: null }); pop('Picture reset', 'You are using the default profile picture again.'); } catch (err) { pop('Could not reset', getErr(err), 'bad'); } break;
     case 'report': openReport(d.kind, d.rid); break;
     case 'delpost': openDelete(d.kind, d.rid); break;
     case 'reviewreport': { const r = G.reports.find(x => x.id === d.id); if (r) { ui.threadId = r.threadId; const t = findThread(r.threadId); if (t) ui.section = t.section; ui.view = 'thread'; ensureReplies(); const wait = setInterval(() => { const pp = r.kind === 'reply' ? G.replies.find(x => x.id === r.replyId) : findThread(r.threadId); if (pp || !findThread(r.threadId)) { clearInterval(wait); if (pp) openDelete(r.kind, r.replyId || r.threadId, r.id, r.rule === 'other' ? null : r.rule); else pop('Already gone', 'That post was already removed.', 'bad'); render(); } }, 150); setTimeout(() => clearInterval(wait), 4000); } break; }
@@ -988,12 +986,9 @@ document.addEventListener('change', e => {
   if (inp) {
     if (!inp.files || !inp.files[0]) return;
     const kind = inp.dataset.img;
-    readImage(inp.files[0], kind === 'pfp' ? 192 : 1200, kind === 'pfp' ? 100000 : 800000, async (err, url) => {
+    readImage(inp.files[0], 1200, 800000, (err, url) => {
       if (err) { inp.value = ''; pop('Image rejected', err, 'bad'); return; }
-      if (kind === 'pfp') {
-        try { await updateDoc(doc(db, 'users', G.user.uid), { pfp: url }); pop('Picture updated', 'Your new profile picture is showing on your posts.'); }
-        catch (er) { pop('Could not save', 'Your picture could not be saved (' + getErr(er) + ').', 'bad'); }
-      } else { pending[kind] = url; setPreview(kind); }
+      pending[kind] = url; setPreview(kind);
     });
     return;
   }
