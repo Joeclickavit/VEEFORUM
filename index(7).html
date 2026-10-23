@@ -92,6 +92,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .tag.admin { border-color: var(--alert); color: var(--alert); }
 .tag.mod { border-color: var(--cyan); color: var(--cyan); }
 .tag.dim { border-color: var(--line); color: var(--dim); }
+.nm[title], .rn[title] { cursor: help; text-decoration: underline dotted var(--dim); text-underline-offset: 3px; }
 .av { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--s, 40px); height: var(--s, 40px); flex: none; border: 2px solid var(--line); background: var(--row-hi); overflow: hidden; font-family: var(--f-display); color: var(--dim); font-size: calc(var(--s, 40px) * .4); }
 .av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .form { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--line); padding: 14px; background: var(--row); max-width: 820px; }
@@ -276,7 +277,7 @@ const emailFor = name => name.toLowerCase() + EMAIL_DOMAIN;
 /* ---------- state ---------- */
 const G = {
   user: null, me: null, meLoaded: false, users: {}, threads: [], replies: [], repFor: null,
-  reports: [], modLog: [], warnReqs: [], apps: {}, boards: [], appeals: [], filterWords: [], myAppeal: null, memberKey: null, ready: { users: false, threads: false },
+  reports: [], modLog: [], warnReqs: [], apps: {}, boards: [], appeals: [], filterWords: [], myAppeal: null, realNames: {}, settings: { showRealNames: false }, myReal: null, myRealLoaded: false, realSkip: false, memberKey: null, ready: { users: false, threads: false },
   alertsInit: false, prevReports: 0, prevPending: 0, prevReqs: 0, prevAppeals: 0, purged: false, err: null
 };
 const ui = { view: 'home', section: null, threadId: null, composing: false, mode: 'login', layout: 'catalog', staffTab: 'reports', busy: false };
@@ -284,7 +285,7 @@ const pending = { post: null, reply: null, pfp: null };
 const PFP_PX = 512, PFP_CHARS = 300000; // any file under 2 MB is accepted, then shrunk so it fits in the users list
 let queue = [];
 let M = null; // open modal state
-let unsubs = [], unsubMe = null, unsubReplies = null, unsubAppeal = null;
+let unsubs = [], unsubMe = null, unsubReplies = null, unsubAppeal = null, unsubReal = null, unsubMyReal = null;
 
 const configured = !String(firebaseConfig.apiKey).startsWith('PASTE');
 let app_, auth, db;
@@ -300,6 +301,10 @@ const timeoutMs = () => G.me && G.me.timeoutUntil ? ms(G.me.timeoutUntil) : 0;
 const isTimedOut = () => timeoutMs() > Date.now();
 const userOf = uid => G.users[uid];
 const getErr = e => (e && e.code) ? e.code : String(e);
+/* real names: admins always see them; everyone else only when an admin turns the setting on */
+const canSeeReal = () => isAdmin() || !!G.settings.showRealNames;
+const realOf = uid => { if (!canSeeReal()) return ''; const r = G.realNames[uid] || (G.user && uid === G.user.uid ? G.myReal : null); return r && r.name ? r.name : ''; };
+const realTip = uid => { const n = realOf(uid); return n ? ` title="Real name: ${esc(n)}"` : ''; };
 
 /* ---------- avatars, names ---------- */
 function av(uid, size, nameFallback) {
@@ -314,7 +319,7 @@ function av(uid, size, nameFallback) {
 function badge(role) { return ROLE_LABEL[role] ? `<span class="tag ${role}">${ROLE_LABEL[role]}</span>` : ''; }
 function nameHTML(uid, fallback) {
   const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
-  return `<span class="nm">${esc((u && u.username) || fallback || 'unknown')}</span>${u ? badge(u.role) : ''}${u && u.status === 'banned' ? '<span class="tag admin">BANNED</span>' : ''}`;
+  return `<span class="nm"${realTip(uid)}>${esc((u && u.username) || fallback || 'unknown')}</span>${u ? badge(u.role) : ''}${u && u.status === 'banned' ? '<span class="tag admin">BANNED</span>' : ''}`;
 }
 function fmt(t) {
   return esc(t).split('\n').map(line => {
@@ -381,7 +386,7 @@ const imgPicker = kind => `<div class="row"><label class="btn sm ghost" for="img
 
 /* ---------- listeners ---------- */
 function onErr(name) { return e => { console.error(name, e); if (getErr(e) === 'permission-denied') G.err = 'permission'; softRender(); }; }
-function stopMember() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; G.users = {}; G.threads = []; G.reports = []; G.modLog = []; G.warnReqs = []; G.apps = {}; G.boards = []; G.appeals = []; G.filterWords = []; RULES = DEFAULT_RULES.slice(); G.ready = { users: false, threads: false }; G.alertsInit = false; stopReplies(); }
+function stopMember() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; G.users = {}; G.threads = []; G.reports = []; G.modLog = []; G.warnReqs = []; G.apps = {}; G.boards = []; G.appeals = []; G.filterWords = []; G.realNames = {}; G.settings = { showRealNames: false }; if (unsubReal) { unsubReal(); unsubReal = null; } RULES = DEFAULT_RULES.slice(); G.ready = { users: false, threads: false }; G.alertsInit = false; stopReplies(); }
 function stopReplies() { if (unsubReplies) { unsubReplies(); unsubReplies = null; } G.replies = []; G.repFor = null; }
 function snapData(d) { return { id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }; }
 function startMember() {
@@ -406,6 +411,10 @@ function startMember() {
     G.filterWords = s.exists() && Array.isArray(s.data().words) ? s.data().words.map(w => String(w).toLowerCase()).filter(Boolean) : [];
     softRender();
   }, onErr('wordfilter')));
+  unsubs.push(onSnapshot(doc(db, 'config', 'settings'), s => {
+    G.settings = { showRealNames: !!(s.exists() && s.data().showRealNames) };
+    syncReal(); softRender();
+  }, onErr('settings')));
   if (isMod()) {
     unsubs.push(onSnapshot(query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100)), s => { G.reports = s.docs.map(snapData); staffAlerts(); softRender(); }, onErr('reports')));
     unsubs.push(onSnapshot(query(collection(db, 'modLog'), orderBy('createdAt', 'desc'), limit(100)), s => { G.modLog = s.docs.map(snapData); softRender(); }, onErr('modLog')));
@@ -416,6 +425,15 @@ function startMember() {
     unsubs.push(onSnapshot(collection(db, 'applications'), s => { G.apps = {}; s.forEach(d => { G.apps[d.id] = snapData(d); }); softRender(); }, onErr('applications')));
     if (!G.purged) { G.purged = true; purgeOld().catch(() => {}); setTimeout(() => tidy().catch(() => {}), 8000); }
   }
+}
+function syncReal() {
+  const want = isApproved() && canSeeReal();
+  if (want && !unsubReal) unsubReal = onSnapshot(collection(db, 'realNames'), s => { G.realNames = {}; s.forEach(d => { G.realNames[d.id] = snapData(d); }); softRender(); }, e => console.error('realNames', e));
+  else if (!want && unsubReal) { unsubReal(); unsubReal = null; G.realNames = {}; }
+}
+function checkRealPrompt() {
+  if (M || G.realSkip || !G.myRealLoaded || G.myReal || !G.me || G.me.status !== 'approved') return;
+  openModal({ kind: 'realname', first: true });
 }
 function syncMember() {
   const key = isApproved() ? 'a:' + G.me.role : null;
@@ -470,20 +488,23 @@ if (configured) {
   onAuthStateChanged(auth, user => {
     if (unsubMe) { unsubMe(); unsubMe = null; }
     if (unsubAppeal) { unsubAppeal(); unsubAppeal = null; } G.myAppeal = null;
+    if (unsubMyReal) { unsubMyReal(); unsubMyReal = null; } G.myReal = null; G.myRealLoaded = false; G.realSkip = false;
     stopMember(); G.memberKey = null; G.user = user; G.me = null; G.meLoaded = false; G.err = null; G.purged = false;
     ui.view = 'home'; ui.section = null; ui.threadId = null; ui.composing = false;
     if (!user) { render(); return; }
     unsubMe = onSnapshot(doc(db, 'users', user.uid), s => {
       G.meLoaded = true;
       G.me = s.exists() ? snapData(s) : null;
-      syncMember(); syncAppeal(); softRender();
+      syncMember(); syncAppeal(); checkRealPrompt(); softRender();
     }, e => { console.error(e); G.meLoaded = true; G.err = 'account'; render(); });
+    unsubMyReal = onSnapshot(doc(db, 'realNames', user.uid), s => { G.myReal = s.exists() ? snapData(s) : null; G.myRealLoaded = true; checkRealPrompt(); softRender(); }, e => console.error('myRealName', e));
     render();
   });
 }
 async function doSignup(f) {
-  const name = f.elements.name.value.trim(), pass = f.elements.pass.value, pass2 = f.elements.pass2.value, reason = f.elements.reason.value.trim();
+  const real = f.elements.real.value.trim().replace(/\s+/g, ' '), name = f.elements.name.value.trim(), pass = f.elements.pass.value, pass2 = f.elements.pass2.value, reason = f.elements.reason.value.trim();
   if (!/^[A-Za-z0-9_-]{3,16}$/.test(name)) return pop('Invalid name', 'Use 3 to 16 letters, numbers, dashes or underscores.', 'bad');
+  if (real.length < 2 || real.length > 40) return pop('Your name', 'Type your name (2 to 40 characters).', 'bad');
   if (/(admin|owner|staff|moderator|itsmason)/i.test(name)) return pop('Name not allowed', 'That name looks like a staff name. Pick another one.', 'bad');
   if (pass.length < 8) return pop('Weak password', 'Use at least 8 characters.', 'bad');
   if (pass !== pass2) return pop('Passwords differ', 'The two passwords do not match.', 'bad');
@@ -494,6 +515,7 @@ async function doSignup(f) {
     const b = writeBatch(db);
     b.set(doc(db, 'users', cred.user.uid), { username: name, usernameLower: name.toLowerCase(), role: 'user', status: 'pending', timeoutUntil: null, pfp: null, createdAt: serverTimestamp() });
     b.set(doc(db, 'applications', cred.user.uid), { username: name, reason, createdAt: serverTimestamp() });
+    b.set(doc(db, 'realNames', cred.user.uid), { name: real, username: name, updatedAt: serverTimestamp() });
     await b.commit();
     pop('Application sent', 'Staff will review it within 72 hours. You can log in any time to check.');
   } catch (e) {
@@ -531,6 +553,7 @@ function gateHTML() {
     <div class="seg"><button type="button" data-action="mode" data-mode="login" aria-pressed="${login}">Log in</button><button type="button" data-action="mode" data-mode="signup" aria-pressed="${!login}">Request account</button></div>
     <form class="form" data-form="${login ? 'login' : 'signup'}" autocomplete="off">
       <label class="l" for="f-name">Username</label><input id="f-name" name="name" type="text" maxlength="16" required autocomplete="username">
+      ${login ? '' : `<label class="l" for="f-real">Your name</label><input id="f-real" name="real" type="text" maxlength="40" required autocomplete="name"><div class="fine">Admins can see this when they hover over your username. Admins may choose to show it to everyone later.</div>`}
       <label class="l" for="f-pass">Password</label><input id="f-pass" name="pass" type="password" minlength="${login ? 1 : 8}" required autocomplete="${login ? 'current-password' : 'new-password'}" placeholder="${login ? '' : 'At least 8 characters'}">
       ${login ? '' : `<label class="l" for="f-pass2">Repeat password</label><input id="f-pass2" name="pass2" type="password" minlength="8" required autocomplete="new-password">
       <label class="l" for="f-reason">Why do you want to join?</label><textarea id="f-reason" name="reason" minlength="20" maxlength="500" required placeholder="Staff read this before approving you."></textarea>
@@ -645,7 +668,7 @@ function threadHTML() {
     <div class="row"><button class="btn" type="submit" ${isTimedOut() ? 'disabled' : ''}>Post reply</button><span class="fine">Click a post number to quote it. Start a line with &gt; for green text.</span></div></form>`;
 }
 function userCard(u, i, markNew) {
-  return `<div class="user">${av(u.id, 44)}<div class="nm">${esc(u.username)} ${badge(u.role)}${markNew && i === 0 ? ' <span class="tag">NEW</span>' : ''}<div class="joined">Joined ${dateStr(ms(u.createdAt))}</div></div></div>`;
+  return `<div class="user">${av(u.id, 44)}<div class="nm"><span class="rn"${realTip(u.id)}>${esc(u.username)}</span> ${badge(u.role)}${markNew && i === 0 ? ' <span class="tag">NEW</span>' : ''}<div class="joined">Joined ${dateStr(ms(u.createdAt))}</div></div></div>`;
 }
 function usersHTML() {
   const all = Object.values(G.users).filter(u => u.status === 'approved');
@@ -659,6 +682,8 @@ function usersHTML() {
 function profileHTML() {
   const u = G.me;
   return `<h1 class="h1">Your profile</h1><div class="form"><div class="row">${av(u.id, 96)}<div><div style="font-size:30px">${esc(u.username)} ${badge(u.role)}</div><div class="desc">Joined ${dateStr(ms(u.createdAt))}</div></div></div>
+    <div class="row"><span>Your name: ${G.myReal ? esc(G.myReal.name) : 'not set'}</span><button type="button" class="btn sm ghost" data-action="editreal">${G.myReal ? 'Change name' : 'Add name'}</button></div>
+    <div class="fine">${G.settings.showRealNames ? 'Everyone can see this when they hover over your username.' : 'Only admins can see this when they hover over your username.'}</div>
     ${isMod() ? `<span class="label">Staff profile picture</span>${imgPicker('pfp')}
       <div class="row"><button type="button" class="btn sm" data-action="savepfp">Save picture</button></div>
       <div class="fine">Staff only. Pick any image under 2 MB; it is shrunk to ${PFP_PX}px to fit. Members all use the default picture.</div>`
@@ -676,7 +701,7 @@ function rulesHTML() {
 
 /* ---- staff ---- */
 function staffTabs() {
-  const tabs = [['reports', 'Reports', true, isMod() ? openReports().length : 0], ['requests', 'Warn requests', isAdmin(), isAdmin() ? pendingReqs().length : 0], ['approvals', 'Approvals', isAdmin(), isAdmin() ? pendingUsers().length : 0], ['members', 'Members', true, 0], ['appeals', 'Appeals', isAdmin(), isAdmin() ? openAppeals().length : 0], ['filter', 'Word filter', isAdmin(), 0], ['boards', 'Boards', true, 0], ['log', 'Mod log', true, 0]];
+  const tabs = [['reports', 'Reports', true, isMod() ? openReports().length : 0], ['requests', 'Warn requests', isAdmin(), isAdmin() ? pendingReqs().length : 0], ['approvals', 'Approvals', isAdmin(), isAdmin() ? pendingUsers().length : 0], ['members', 'Members', true, 0], ['appeals', 'Appeals', isAdmin(), isAdmin() ? openAppeals().length : 0], ['filter', 'Word filter', isAdmin(), 0], ['settings', 'Settings', isAdmin(), 0], ['boards', 'Boards', true, 0], ['log', 'Mod log', true, 0]];
   return `<div class="subtabs">${tabs.filter(t => t[2]).map(t => `<button type="button" class="btn sm ${ui.staffTab === t[0] ? '' : 'ghost'}" data-action="stafftab" data-tab="${t[0]}" aria-pressed="${ui.staffTab === t[0]}">${t[1]}${t[3] ? ' (' + t[3] + ')' : ''}</button>`).join('')}</div>`;
 }
 function reportsHTML() {
@@ -705,7 +730,7 @@ function approvalsHTML() {
   const list = pendingUsers();
   return `<span class="label">${list.length} waiting for approval</span>${list.length ? list.map(u => {
     const a = G.apps[u.id], due = ms(u.createdAt) + 72 * HOUR, over = due < Date.now();
-    return `<div class="item open"><div class="row"><span class="h2">${esc(u.username)}</span><span class="fine">applied ${ago(ms(u.createdAt))}</span><span class="tag ${over ? 'admin' : 'dim'}">${over ? 'OVERDUE' : 'DUE ' + dateStr(due)}</span></div>
+    return `<div class="item open"><div class="row"><span class="h2">${esc(u.username)}</span>${realOf(u.id) ? `<span class="fine">(${esc(realOf(u.id))})</span>` : ''}<span class="fine">applied ${ago(ms(u.createdAt))}</span><span class="tag ${over ? 'admin' : 'dim'}">${over ? 'OVERDUE' : 'DUE ' + dateStr(due)}</span></div>
       <div class="q">${a ? esc(a.reason) : '(no reason found)'}</div><div class="row"><button type="button" class="btn sm" data-action="approve" data-uid="${u.id}">Approve</button><button type="button" class="btn sm danger" data-action="deny" data-uid="${u.id}">Deny</button></div></div>`;
   }).join('') : '<div class="empty">Nobody is waiting.</div>'}`;
 }
@@ -713,7 +738,7 @@ function membersHTML() {
   const list = Object.values(G.users).filter(u => u.id !== G.user.uid && u.role !== 'owner' && (u.status === 'approved' || u.status === 'banned')).sort((a, b) => rk(b.role) - rk(a.role) || a.username.localeCompare(b.username));
   return `<span class="label">${list.length} members</span><div class="list">${list.map(u => {
     const can = actOn(u.role), to = u.timeoutUntil ? ms(u.timeoutUntil) : 0, timed = to > Date.now();
-    return `<div class="item"><div class="row">${av(u.id, 36)}<span class="h2">${esc(u.username)}</span>${badge(u.role)}${u.status === 'banned' ? `<span class="tag admin">BANNED</span>${u.banReason ? `<span class="fine">Reason: ${esc(u.banReason)}</span>` : ''}` : ''}${timed ? `<span class="tag warn">TIMEOUT to ${esc(stamp(to))}</span>` : ''}</div>
+    return `<div class="item"><div class="row">${av(u.id, 36)}<span class="h2">${esc(u.username)}</span>${realOf(u.id) ? `<span class="fine">(${esc(realOf(u.id))})</span>` : ''}${badge(u.role)}${u.status === 'banned' ? `<span class="tag admin">BANNED</span>${u.banReason ? `<span class="fine">Reason: ${esc(u.banReason)}</span>` : ''}` : ''}${timed ? `<span class="tag warn">TIMEOUT to ${esc(stamp(to))}</span>` : ''}</div>
       ${can ? `<div class="row">
         <select id="to-${u.id}" aria-label="Timeout length">${DURS.map(d => `<option value="${d[1]}">${d[0]}</option>`).join('')}</select><button type="button" class="btn sm" data-action="timeout" data-uid="${u.id}">Time out</button>
         ${isAdmin() && timed ? `<button type="button" class="btn sm ghost" data-action="untimeout" data-uid="${u.id}">Remove timeout</button>` : ''}
@@ -742,6 +767,13 @@ function filterHTML() {
     <div class="row"><button class="btn" type="submit">Save list</button></div>
     <div class="fine">A post or reply containing a listed word is still posted, but a report is filed automatically (reporter: Word filter) so a mod can review it. It ignores capital letters and matches whole words and phrases. Up to 200 entries of 40 characters. Members can technically read this list.</div></form>`;
 }
+function settingsHTML() {
+  const on = G.settings.showRealNames;
+  return `<span class="label">Settings</span><div class="box" style="max-width:760px"><span class="h2">Real names</span>
+    <span>Members type their name when they sign up (existing members are asked the next time they log in). It is visible to <span class="${on ? 'warn' : ''}">${on ? 'everyone' : 'admins only'}</span> when hovering over a username.</span>
+    <div class="row"><button type="button" class="btn sm ${on ? 'danger' : ''}" data-action="togglereal">${on ? 'Hide from members (admins only)' : 'Show to everyone'}</button></div>
+    <div class="fine">Turning this on shows every member's name to every approved member. Hover works with a mouse; touch screens have no hover.</div></div>`;
+}
 function boardsHTML() {
   const mine = G.boards;
   return `<span class="label">Create a board</span>
@@ -762,8 +794,8 @@ function staffHTML() {
   if (!isMod()) { ui.view = 'home'; return homeHTML(); }
   if (ui.staffTab === 'requests' && !isAdmin()) ui.staffTab = 'reports';
   if (ui.staffTab === 'approvals' && !isAdmin()) ui.staffTab = 'reports';
-  if ((ui.staffTab === 'appeals' || ui.staffTab === 'filter') && !isAdmin()) ui.staffTab = 'reports';
-  const body = { reports: reportsHTML, requests: requestsHTML, approvals: approvalsHTML, members: membersHTML, boards: boardsHTML, appeals: appealsHTML, filter: filterHTML, log: logHTML }[ui.staffTab]();
+  if ((ui.staffTab === 'appeals' || ui.staffTab === 'filter' || ui.staffTab === 'settings') && !isAdmin()) ui.staffTab = 'reports';
+  const body = { reports: reportsHTML, requests: requestsHTML, approvals: approvalsHTML, members: membersHTML, boards: boardsHTML, appeals: appealsHTML, filter: filterHTML, settings: settingsHTML, log: logHTML }[ui.staffTab]();
   return `<h1 class="h1">Staff</h1>${staffTabs()}${isAdmin() ? `<div class="row"><button type="button" class="btn sm ghost" data-action="purge">Clean up old data</button><span class="fine">This also runs by itself when an admin opens the site. It removes last month's posts, threads past the newest ${MAX_THREADS}, and finished reports and requests older than 30 days.</span></div>` : ''}${body}`;
 }
 
@@ -937,6 +969,15 @@ async function executeDelete() {
 function renderModal() {
   if (!M) { closeModal(); return; }
   $modal.hidden = false;
+  if (M.kind === 'realname') {
+    const cur = G.myReal ? G.myReal.name : '';
+    $modal.innerHTML = `<form class="modal" data-form="realname"><h2 class="h1" style="font-size:22px">${M.first ? 'What is your name?' : 'Your name'}</h2>
+      <div class="fine">Admins can see this when they hover over your username. ${G.settings.showRealNames ? 'Right now it is visible to everyone.' : 'Admins may switch it to everyone later.'}</div>
+      <label class="label" for="m-real">Name</label><input id="m-real" type="text" style="min-height:0" maxlength="40" required value="${esc(cur)}" autocomplete="name">
+      <div class="row"><button class="btn" type="submit">Save</button><button type="button" class="btn ghost" data-action="skipreal">${M.first ? 'Later' : 'Cancel'}</button></div></form>`;
+    const ri = document.getElementById('m-real'); if (ri) ri.focus();
+    return;
+  }
   if (M.kind === 'report') {
     $modal.innerHTML = `<form class="modal" data-form="report"><h2 class="h1" style="font-size:22px">Report post No.${esc(M.post.no)}</h2><div class="fine">By ${esc(M.post.authorName)}. A mod will review it.</div>
       ${RULES.concat([{ id: 'other', text: 'Something else' }]).map(r => `<label class="opt"><input type="radio" name="rule" value="${r.id}" ${M.rule === r.id ? 'checked' : ''}><span>${esc(r.text)}</span></label>`).join('')}
@@ -1001,6 +1042,24 @@ function renderModal() {
 }
 
 /* ---------- staff actions ---------- */
+async function saveRealName() {
+  const name = document.getElementById('m-real').value.trim().replace(/\s+/g, ' ');
+  if (name.length < 2 || name.length > 40) return pop('Check your name', 'Use 2 to 40 characters.', 'bad');
+  try {
+    await setDoc(doc(db, 'realNames', G.user.uid), { name, username: G.me.username, updatedAt: serverTimestamp() });
+    closeModal(); pop('Saved', 'Your name was saved.');
+  } catch (e) { pop('Could not save', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function toggleReal() {
+  const v = !G.settings.showRealNames;
+  try {
+    const b = writeBatch(db);
+    b.set(doc(db, 'config', 'settings'), { showRealNames: v, updatedBy: G.user.uid, updatedByName: G.me.username, updatedAt: serverTimestamp() }, { merge: true });
+    logDoc(b, 'settings', null, { detail: v ? 'Real names visible to everyone' : 'Real names visible to admins only' });
+    await b.commit();
+    pop('Saved', v ? 'Real names now show to everyone on hover.' : 'Real names now show to admins only.');
+  } catch (e) { pop('Could not save', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
 async function simpleUserUpdate(uid, fields, type, detail) {
   const u = userOf(uid); if (!u) return;
   try {
@@ -1259,6 +1318,9 @@ document.addEventListener('click', async e => {
     case 'rmboard': removeBoard(d.id); break;
     case 'setrole': { const sel = document.getElementById('role-' + d.uid); simpleUserUpdate(d.uid, { role: sel.value }, 'role', 'Rank set to ' + sel.options[sel.selectedIndex].text); break; }
     case 'warnnow': openWarnNow(d.uid); break;
+    case 'editreal': openModal({ kind: 'realname', first: false }); break;
+    case 'skipreal': G.realSkip = true; closeModal(); break;
+    case 'togglereal': toggleReal(); break;
     case 'purge': try { const n = (await purgeOld()) + (await tidy()); pop('Cleaned up', n + (n === 1 ? ' old item was' : ' old items were') + ' removed.'); } catch (err) { pop('Could not clean up', getErr(err), 'bad'); } break;
   }
 });
@@ -1298,6 +1360,7 @@ document.addEventListener('submit', e => {
   else if (k === 'board') createBoard(f);
   else if (k === 'appeal') doAppeal();
   else if (k === 'filter') saveFilter();
+  else if (k === 'realname') saveRealName();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (M) closeModal(); else if (queue.length) closePop(); } });
 setInterval(() => { if (G.user && isApproved() && !queue.length) softRender(); }, 60000);
