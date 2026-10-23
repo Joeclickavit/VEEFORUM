@@ -432,7 +432,7 @@ function syncReal() {
   else if (!want && unsubReal) { unsubReal(); unsubReal = null; G.realNames = {}; }
 }
 function checkRealPrompt() {
-  if (M || G.realSkip || !G.myRealLoaded || G.myReal || !G.me || G.me.status !== 'approved') return;
+  if (M || !G.myRealLoaded || G.myReal || !G.me || G.me.status !== 'approved') return;
   openModal({ kind: 'realname', first: true });
 }
 function syncMember() {
@@ -974,7 +974,7 @@ function renderModal() {
     $modal.innerHTML = `<form class="modal" data-form="realname"><h2 class="h1" style="font-size:22px">${M.first ? 'What is your name?' : 'Your name'}</h2>
       <div class="fine">Admins can see this when they hover over your username. ${G.settings.showRealNames ? 'Right now it is visible to everyone.' : 'Admins may switch it to everyone later.'}</div>
       <label class="label" for="m-real">Name</label><input id="m-real" type="text" style="min-height:0" maxlength="40" required value="${esc(cur)}" autocomplete="name">
-      <div class="row"><button class="btn" type="submit">Save</button><button type="button" class="btn ghost" data-action="skipreal">${M.first ? 'Later' : 'Cancel'}</button></div></form>`;
+      <div class="row"><button class="btn" type="submit">Save</button>${M.first ? '' : '<button type="button" class="btn ghost" data-action="skipreal">Cancel</button>'}</div></form>`;
     const ri = document.getElementById('m-real'); if (ri) ri.focus();
     return;
   }
@@ -1319,7 +1319,7 @@ document.addEventListener('click', async e => {
     case 'setrole': { const sel = document.getElementById('role-' + d.uid); simpleUserUpdate(d.uid, { role: sel.value }, 'role', 'Rank set to ' + sel.options[sel.selectedIndex].text); break; }
     case 'warnnow': openWarnNow(d.uid); break;
     case 'editreal': openModal({ kind: 'realname', first: false }); break;
-    case 'skipreal': G.realSkip = true; closeModal(); break;
+    case 'skipreal': closeModal(); break;
     case 'togglereal': toggleReal(); break;
     case 'purge': try { const n = (await purgeOld()) + (await tidy()); pop('Cleaned up', n + (n === 1 ? ' old item was' : ' old items were') + ' removed.'); } catch (err) { pop('Could not clean up', getErr(err), 'bad'); } break;
   }
@@ -1362,7 +1362,7 @@ document.addEventListener('submit', e => {
   else if (k === 'filter') saveFilter();
   else if (k === 'realname') saveRealName();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (M) closeModal(); else if (queue.length) closePop(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (M && M.kind === 'realname' && M.first) return; if (M) closeModal(); else if (queue.length) closePop(); } });
 setInterval(() => { if (G.user && isApproved() && !queue.length) softRender(); }, 60000);
 
 render();
