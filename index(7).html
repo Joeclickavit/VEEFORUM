@@ -13,23 +13,26 @@
   --alert: #ff6a4d; --amber: #ffd36b; --quote: #c8ff6b; --cyan: #7de8ff;
   --f-display: 'Silkscreen', 'Courier New', monospace;
   --f-body: 'VT323', 'Courier New', monospace;
+  --glow-rgb: 141,255,154;
   color-scheme: dark;
 }
+:root[data-theme="bw"] { --bg: #000; --bar: #0d0d0d; --row: #161616; --row-hi: #2a2a2a; --glow: #f2f2f2; --dim: #9b9b9b; --line: #4a4a4a; --alert: #ff6a4d; --amber: #d6d6d6; --quote: #bdbdbd; --cyan: #a8a8a8; --glow-rgb: 242,242,242; }
+:root[data-theme="blue"] { --bg: #020712; --bar: #061a3a; --row: #0a2147; --row-hi: #123670; --glow: #7cc4ff; --dim: #5a95d6; --line: #1f4f94; --alert: #ff6a4d; --amber: #ffd36b; --quote: #9fe0ff; --cyan: #7de8ff; --glow-rgb: 124,196,255; }
 * { box-sizing: border-box; }
 html { background: var(--bg); }
 body {
   margin: 0; background: var(--bg); color: var(--glow);
   font-family: var(--f-body); font-size: 22px; line-height: 1.25; min-height: 100vh;
-  background-image: radial-gradient(ellipse at 50% -10%, rgba(40,200,90,.16), rgba(0,0,0,0) 55%), linear-gradient(rgba(60,255,110,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(60,255,110,.035) 1px, transparent 1px);
+  background-image: radial-gradient(ellipse at 50% -10%, rgba(var(--glow-rgb),.16), rgba(0,0,0,0) 55%), linear-gradient(rgba(var(--glow-rgb),.035) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--glow-rgb),.035) 1px, transparent 1px);
   background-size: auto, 32px 32px, 32px 32px; background-attachment: fixed;
 }
 body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 70; background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.18) 2px 3px), radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,.45)); }
 button, input, textarea, select { font: inherit; color: inherit; }
 .gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.top { position: sticky; top: 0; z-index: 20; background: var(--bar); border-bottom: 2px solid var(--glow); box-shadow: 0 0 18px rgba(141,255,154,.25); }
+.top { position: sticky; top: 0; z-index: 20; background: var(--bar); border-bottom: 2px solid var(--glow); box-shadow: 0 0 18px rgba(var(--glow-rgb),.25); }
 .top .in { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 8px; }
-.brand { font-family: var(--f-display); font-weight: 700; font-size: 24px; letter-spacing: .1em; text-shadow: 0 0 12px rgba(141,255,154,.7); background: none; border: 0; cursor: pointer; padding: 0; }
-.brand:hover { text-shadow: 2px 0 var(--alert), -2px 0 var(--amber), 0 0 12px rgba(141,255,154,.7); }
+.brand { font-family: var(--f-display); font-weight: 700; font-size: 24px; letter-spacing: .1em; text-shadow: 0 0 12px rgba(var(--glow-rgb),.7); background: none; border: 0; cursor: pointer; padding: 0; }
+.brand:hover { text-shadow: 2px 0 var(--alert), -2px 0 var(--amber), 0 0 12px rgba(var(--glow-rgb),.7); }
 .boards { display: flex; gap: 2px 4px; flex-wrap: wrap; align-items: center; padding-bottom: 8px; font-family: var(--f-display); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
 .boards .sep { color: var(--dim); }
 .bl { background: none; border: 0; padding: 3px 6px; cursor: pointer; color: var(--dim); font: inherit; letter-spacing: inherit; text-transform: inherit; }
@@ -41,7 +44,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .me:hover { border-color: var(--glow); }
 .main { display: flex; flex-direction: column; gap: 16px; padding-block: 22px 28px; min-width: 0; }
 .label { font-family: var(--f-display); font-size: 12px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
-.h1 { font-family: var(--f-display); font-weight: 700; font-size: 30px; letter-spacing: .06em; margin: 0; text-shadow: 0 0 10px rgba(141,255,154,.5); overflow-wrap: anywhere; }
+.h1 { font-family: var(--f-display); font-weight: 700; font-size: 30px; letter-spacing: .06em; margin: 0; text-shadow: 0 0 10px rgba(var(--glow-rgb),.5); overflow-wrap: anywhere; }
 .h2 { font-family: var(--f-display); font-weight: 700; font-size: 17px; letter-spacing: .05em; margin: 0; }
 .desc { color: var(--dim); }
 .box { border: 2px solid var(--line); background: var(--row); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
@@ -50,7 +53,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .warn { color: var(--amber); }
 .bad { color: var(--alert); }
 .btn { background: transparent; border: 2px solid var(--glow); padding: 6px 16px; cursor: pointer; font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--glow); display: inline-block; }
-.btn:hover:not([disabled]) { background: var(--glow); color: var(--bg); box-shadow: 0 0 14px rgba(141,255,154,.5); }
+.btn:hover:not([disabled]) { background: var(--glow); color: var(--bg); box-shadow: 0 0 14px rgba(var(--glow-rgb),.5); }
 .btn.sm { padding: 3px 10px; font-size: 11px; }
 .btn.ghost { border-color: var(--line); color: var(--dim); }
 .btn.danger { border-color: var(--alert); color: var(--alert); }
@@ -67,7 +70,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brow .num { color: var(--dim); text-align: right; font-size: 20px; }
 .catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 .cat { display: flex; flex-direction: column; background: var(--row); border: 2px solid var(--line); }
-.cat:hover { border-color: var(--glow); box-shadow: 0 0 16px rgba(141,255,154,.25); }
+.cat:hover { border-color: var(--glow); box-shadow: 0 0 16px rgba(var(--glow-rgb),.25); }
 .cat.top1 { border-color: var(--glow); }
 .catmain { display: flex; flex-direction: column; gap: 6px; text-align: left; background: none; border: 0; padding: 10px; cursor: pointer; min-width: 0; flex: 1; }
 .thumb { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; background: repeating-linear-gradient(45deg, var(--row-hi) 0 8px, var(--row) 8px 16px); border: 2px solid var(--line); overflow: hidden; }
@@ -101,7 +104,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 select { width: auto; padding: 3px 8px; font-size: 20px; }
 .form textarea { min-height: 110px; resize: vertical; }
 .chk { display: flex; gap: 10px; align-items: flex-start; font-size: 22px; }
-.chk input { width: 20px; height: 20px; margin-top: 3px; accent-color: #8dff9a; flex: none; }
+.chk input { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--glow); flex: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .preview { display: flex; align-items: center; gap: 10px; }
 .preview img { max-height: 90px; max-width: 160px; border: 2px solid var(--line); }
@@ -148,18 +151,35 @@ select { width: auto; padding: 3px 8px; font-size: 20px; }
 .stripe { background: var(--row); border: 2px solid var(--alert); padding: 10px 14px; color: var(--alert); }
 .overlay { position: fixed; inset: 0; z-index: 60; background: rgba(2,10,5,.8); display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
 .overlay[hidden] { display: none; }
-.pop { width: min(380px, 100%); background: var(--bg); border: 3px solid var(--glow); padding: 20px 18px 18px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; box-shadow: 0 0 26px rgba(141,255,154,.35); }
+.pop { width: min(380px, 100%); background: var(--bg); border: 3px solid var(--glow); padding: 20px 18px 18px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; box-shadow: 0 0 26px rgba(var(--glow-rgb),.35); }
 .pop.bad { border-color: var(--alert); box-shadow: 0 0 26px rgba(255,106,77,.3); }
 .pop.bad h2 { color: var(--alert); text-shadow: none; }
-.pop h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 28px; letter-spacing: .08em; text-shadow: 0 0 10px rgba(141,255,154,.5); }
+.pop h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 28px; letter-spacing: .08em; text-shadow: 0 0 10px rgba(var(--glow-rgb),.5); }
 .pop p { margin: 0; font-size: 23px; overflow-wrap: anywhere; }
 .pop .rank { display: flex; align-items: center; gap: 12px; font-family: var(--f-display); font-size: 22px; color: var(--amber); }
-.modal { width: min(560px, 100%); background: var(--bg); border: 3px solid var(--glow); padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 26px rgba(141,255,154,.35); margin: auto; }
+.modal { width: min(560px, 100%); background: var(--bg); border: 3px solid var(--glow); padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 26px rgba(var(--glow-rgb),.35); margin: auto; }
 .modal.bad { border-color: var(--alert); }
 .modal textarea, .modal input[type=text] { background: var(--row); border: 2px solid var(--line); padding: 6px 10px; width: 100%; font-size: 22px; color: var(--glow); min-height: 70px; resize: vertical; }
 .opt { display: flex; gap: 10px; align-items: flex-start; padding: 6px 10px; border: 2px solid var(--line); background: var(--row); cursor: pointer; font-size: 22px; }
-.opt input { margin-top: 4px; accent-color: #8dff9a; flex: none; }
+.opt input { margin-top: 4px; accent-color: var(--glow); flex: none; }
 .opt small { display: block; color: var(--dim); font-size: 18px; }
+.emo { max-height: 40px; vertical-align: middle; }
+.nmbtn { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.nmbtn:hover .nm { text-decoration: underline; }
+button.user { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.user:hover { border-color: var(--glow); }
+button.item { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; max-width: 1100px; }
+button.item:hover { border-color: var(--glow); }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; max-width: 1100px; }
+.stat { background: var(--row); border: 2px solid var(--line); padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat .sv { font-size: 26px; overflow-wrap: anywhere; line-height: 1.1; }
+.themes { display: flex; gap: 10px; flex-wrap: wrap; }
+.emopanel { display: flex; flex-direction: column; gap: 6px; }
+.emopanel[hidden] { display: none; }
+.emogrid { display: flex; flex-wrap: wrap; gap: 4px; max-height: 210px; overflow-y: auto; padding: 6px; border: 2px solid var(--line); background: var(--bg); }
+.emob { background: none; border: 1px solid transparent; padding: 3px; cursor: pointer; min-width: 36px; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
+.emob:hover { border-color: var(--glow); background: var(--row-hi); }
+.emob img { max-height: 32px; max-width: 56px; }
 /* backgrounds for gate screens */
 .gate.bg { background: linear-gradient(rgba(2,12,5,.45), rgba(2,12,5,.78)), var(--bg-img) center / cover no-repeat fixed; }
 .gate.bg .panel { background: rgba(2,12,5,.86); border: 2px solid var(--line); padding: 20px; box-shadow: 0 0 30px rgba(0,0,0,.6); }
@@ -225,9 +245,10 @@ const BG_PENDING = JSD + 'Vee_Staff_Only_Area.webp';
 const BG_BAN = JSD + 'EpikGameShow.webp';
 const EMAIL_DOMAIN = '@veeforums.app';
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
-const MAX_UPLOAD = 2 * 1024 * 1024;
+const MAX_UPLOAD = 2 * 1024 * 1024, MAX_PFP_UPLOAD = 1024 * 1024; // pictures for posts: under 2 MB, profile pictures: under 1 MB
 const MAX_THREADS = 300; // oldest threads beyond this are removed so the database never fills up
 const SECTIONS = [
+  { id: 'announcements', name: 'ANNOUNCEMENTS', desc: 'Official news from staff. Only admins post threads; everyone can reply.', locked: true },
   { id: 'dandys', name: 'DandysWorld', desc: "Discussions of Dandy's World" },
   { id: 'astros', name: 'Discussions', desc: 'Discuss Astros Dreamland' },
   { id: 'bugs', name: 'Bug Report', desc: 'Report bugs about Astros Dreamland' },
@@ -248,6 +269,14 @@ const DEFAULT_RULES = [
 let RULES = DEFAULT_RULES.slice(); // replaced by the live list in config/rules once an admin edits it
 const DURS = [['10 minutes', 10 * MIN], ['1 hour', HOUR], ['24 hours', DAY], ['7 days', 7 * DAY]];
 const ROLE_LABEL = { owner: 'OWNER', coowner: 'CO-OWNER', admin: 'ADMIN', mod: 'MOD' };
+const TIMEOUT_PFP = 'https://cdn.jsdelivr.net/gh/Joeclickavit/ujkdjkadsjdsalkjdsa@main/Ability_on_cooldown_Sticker.webp'; // shown instead of the avatar while timed out
+const EMO_BASE = 'https://cdn.jsdelivr.net/gh/Joeclickavit/retroemojis@main/';
+const EMO_GH = 'https://api.github.com/repos/Joeclickavit/retroemojis/git/trees/main?recursive=1';
+const EMO_API = 'https://data.jsdelivr.com/v1/packages/gh/Joeclickavit/retroemojis@main?structure=flat';
+const THEMES = [['green', 'Green terminal'], ['bw', 'Black & white'], ['blue', 'Blue & black']];
+function getTheme() { try { return localStorage.getItem('vee-theme') || 'green'; } catch (e) { return 'green'; } }
+function applyTheme(t) { if (t === 'green') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); }
+applyTheme(getTheme());
 
 const $app = document.getElementById('app');
 const $pop = document.getElementById('popup');
@@ -263,6 +292,7 @@ const dateStr = t => new Date(t).toLocaleDateString(undefined, { month: 'short',
 const stamp = t => { const d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
 const allSections = () => SECTIONS.concat(G.boards);
 const secById = id => allSections().find(s => s.id === id);
+const canStartIn = s => !s.locked || isAdmin();
 const ruleById = id => RULES.find(r => r.id === id);
 const ruleName = id => id === 'other' ? 'Other' : (ruleById(id) ? ruleById(id).text : '(removed rule)');
 const isBanned = uid => { const u = G.users[uid]; return !!u && u.status === 'banned'; };
@@ -276,11 +306,12 @@ const emailFor = name => name.toLowerCase() + EMAIL_DOMAIN;
 
 /* ---------- state ---------- */
 const G = {
+  emoMap: {}, emoList: [], prof: null,
   user: null, me: null, meLoaded: false, users: {}, threads: [], replies: [], repFor: null,
   reports: [], modLog: [], warnReqs: [], apps: {}, boards: [], appeals: [], filterWords: [], myAppeal: null, realNames: {}, settings: { showRealNames: false }, myReal: null, myRealLoaded: false, realSkip: false, memberKey: null, ready: { users: false, threads: false },
   alertsInit: false, prevReports: 0, prevPending: 0, prevReqs: 0, prevAppeals: 0, purged: false, err: null
 };
-const ui = { view: 'home', section: null, threadId: null, composing: false, mode: 'login', layout: 'catalog', staffTab: 'reports', busy: false };
+const ui = { profileUid: null, back: null, view: 'home', section: null, threadId: null, composing: false, mode: 'login', layout: 'catalog', staffTab: 'reports', busy: false };
 const pending = { post: null, reply: null, pfp: null };
 const PFP_PX = 512, PFP_CHARS = 300000; // any file under 2 MB is accepted, then shrunk so it fits in the users list
 let queue = [];
@@ -309,21 +340,58 @@ const realTip = uid => { const n = realOf(uid); return n ? ` title="Real name: $
 /* ---------- avatars, names ---------- */
 function av(uid, size, nameFallback) {
   const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
-  // Only staff (mod and above) can have a custom picture; everyone else always gets the default.
+  // Everyone can set a custom picture (under 1 MB). A timed-out member shows the cooldown picture instead.
   const banned = !!u && u.status === 'banned';
-  const custom = !banned && u && rk(u.role) >= 1 ? safeImg(u.pfp) : null;
-  const src = custom || DEFAULT_PFP;
+  const timed = !banned && !!u && !!u.timeoutUntil && ms(u.timeoutUntil) > Date.now();
+  const custom = !banned && !timed && u ? safeImg(u.pfp) : null;
+  const src = timed ? TIMEOUT_PFP : (custom || DEFAULT_PFP);
   const name = (u && u.username) || nameFallback || '?';
   return `<span class="av${banned ? ' gl' : ''}" style="--s:${size || 40}px"><b aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</b><img src="${esc(src)}" alt="" onerror="this.remove()"></span>`;
 }
 function badge(role) { return ROLE_LABEL[role] ? `<span class="tag ${role}">${ROLE_LABEL[role]}</span>` : ''; }
-function nameHTML(uid, fallback) {
+function nameHTML(uid, fallback, link) {
   const u = userOf(uid) || (G.me && G.me.id === uid ? G.me : null);
-  return `<span class="nm"${realTip(uid)}>${esc((u && u.username) || fallback || 'unknown')}</span>${u ? badge(u.role) : ''}${u && u.status === 'banned' ? '<span class="tag admin">BANNED</span>' : ''}`;
+  const nm = `<span class="nm"${realTip(uid)}>${esc((u && u.username) || fallback || 'unknown')}</span>`;
+  return (link ? `<button type="button" class="nmbtn" data-action="viewuser" data-uid="${esc(uid)}">${nm}</button>` : nm) + `${u ? badge(u.role) : ''}${u && u.status === 'banned' ? '<span class="tag admin">BANNED</span>' : ''}`;
+}
+function emoText(h) {
+  return h.replace(/:([A-Za-z0-9_-]{1,40}):/g, (m, n) => {
+    const f = G.emoMap[n.toLowerCase()];
+    return f ? `<img class="emo" src="${EMO_BASE}${encodeURIComponent(f)}" alt=":${n}:" title=":${n}:" loading="lazy">` : m;
+  });
+}
+function setEmojis(files) {
+  G.emoMap = {}; G.emoList = [];
+  files.forEach(f => {
+    const m = /^([A-Za-z0-9_-]{1,40})\.(gif|png|webp)$/i.exec(f);
+    if (m && !G.emoMap[m[1].toLowerCase()]) { G.emoMap[m[1].toLowerCase()] = f; G.emoList.push({ name: m[1].toLowerCase(), file: f }); }
+  });
+  G.emoList.sort((a, b) => a.name.localeCompare(b.name));
+}
+async function loadEmojis() {
+  let age = Infinity;
+  try { const c = JSON.parse(localStorage.getItem('vee-emo') || 'null'); if (c && Array.isArray(c.files)) { setEmojis(c.files); age = Date.now() - (c.at || 0); } } catch (e) {}
+  if (age < 10 * MIN) return; // GitHub allows only 60 anonymous requests per hour, so reuse the saved list for 10 minutes
+  let files = null;
+  try {
+    const r = await fetch(EMO_GH);
+    if (r.ok) { const j = await r.json(); files = (j.tree || []).filter(x => x.type === 'blob' && x.path.indexOf('/') < 0).map(x => x.path); }
+  } catch (e) { console.error('github emojis', e); }
+  if (!files || !files.length) {
+    try { const r = await fetch(EMO_API), j = await r.json(); files = (j.files || []).map(x => String(x.name || '').replace(/^\//, '')).filter(f => f && f.indexOf('/') < 0); } catch (e) { console.error('jsdelivr emojis', e); }
+  }
+  if (files && files.length) { setEmojis(files); try { localStorage.setItem('vee-emo', JSON.stringify({ at: Date.now(), files })); } catch (e) {} softRender(); }
+}
+const emojiPicker = tid => `<div class="row"><button type="button" class="btn sm ghost" data-action="emojitoggle" data-target="${tid}">&#9786; Emoji</button><span class="fine">Emojis are sent as :name: text.</span></div><div class="emopanel" id="emo-${tid}" hidden></div>`;
+function renderEmoGrid(tid, q) {
+  const grid = document.querySelector('#emo-' + tid + ' .emogrid'); if (!grid) return;
+  q = (q || '').trim().toLowerCase();
+  const list = G.emoList.filter(e => !q || e.name.indexOf(q) >= 0).slice(0, 600);
+  grid.innerHTML = list.length ? list.map(e => `<button type="button" class="emob" data-action="emojipick" data-target="${tid}" data-name="${e.name}" title=":${e.name}:"><img src="${EMO_BASE}${encodeURIComponent(e.file)}" alt=":${e.name}:" loading="lazy"></button>`).join('') : `<span class="fine">${G.emoList.length ? 'No emojis match.' : 'Emojis are still loading. Close and reopen in a moment.'}</span>`;
 }
 function fmt(t) {
   return esc(t).split('\n').map(line => {
-    const h = line.replace(/&gt;&gt;(\d+)/g, '<a href="#no-$1" class="qlink" data-action="goto" data-no="$1">&gt;&gt;$1</a>');
+    const h = emoText(line.replace(/&gt;&gt;(\d+)/g, '<a href="#no-$1" class="qlink" data-action="goto" data-no="$1">&gt;&gt;$1</a>'));
     return /^&gt;(?!&gt;)/.test(line) ? `<span class="gt">${h}</span>` : h;
   }).join('\n');
 }
@@ -346,9 +414,10 @@ function openModal(state) { M = state; renderModal(); }
 function closeModal() { M = null; $modal.hidden = true; $modal.innerHTML = ''; }
 
 /* ---------- images (stored compressed inside Firestore, so no paid Storage plan is needed) ---------- */
-function readImage(file, maxPx, maxChars, cb) {
+function readImage(file, maxPx, maxChars, cb, maxBytes) {
+  maxBytes = maxBytes || MAX_UPLOAD;
   if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) return cb('Use a PNG, JPG, WEBP or GIF image.');
-  if (file.size >= MAX_UPLOAD) return cb(`That image is ${(file.size / 1048576).toFixed(1)} MB. Images must be under 2 MB.`);
+  if (file.size >= maxBytes) return cb(`That image is ${(file.size / 1048576).toFixed(1)} MB. Images must be under ${maxBytes / 1048576} MB.`);
   const fr = new FileReader();
   fr.onerror = () => cb('That file could not be read.');
   fr.onload = () => {
@@ -382,7 +451,7 @@ function setPreview(kind) {
   if (pending[kind]) { box.hidden = false; box.innerHTML = `<img src="${pending[kind]}" alt="Selected image"><button type="button" class="btn sm ghost" data-action="clearimg" data-kind="${kind}">Remove</button>`; }
   else { box.hidden = true; box.innerHTML = ''; }
 }
-const imgPicker = kind => `<div class="row"><label class="btn sm ghost" for="img-${kind}">Add image (under 2 MB)</label><input class="sr" id="img-${kind}" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-img="${kind}"></div><div class="preview" id="prev-${kind}" hidden></div>`;
+const imgPicker = kind => `<div class="row"><label class="btn sm ghost" for="img-${kind}">Add image (under ${kind === 'pfp' ? '1' : '2'} MB)</label><input class="sr" id="img-${kind}" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-img="${kind}"></div><div class="preview" id="prev-${kind}" hidden></div>`;
 
 /* ---------- listeners ---------- */
 function onErr(name) { return e => { console.error(name, e); if (getErr(e) === 'permission-denied') G.err = 'permission'; softRender(); }; }
@@ -596,6 +665,7 @@ function shell(main) {
     <nav class="boards" aria-label="Boards"><button type="button" class="bl" data-action="home" ${ui.view === 'home' || ui.view === 'section' || ui.view === 'thread' ? 'aria-current="page"' : ''}>Home</button>
     <span class="sep">/</span><button type="button" class="bl" data-action="users" ${ui.view === 'users' ? 'aria-current="page"' : ''}>Users</button>
     <span class="sep">/</span><button type="button" class="bl" data-action="rules" ${ui.view === 'rules' ? 'aria-current="page"' : ''}>Rules</button>
+    <span class="sep">/</span><button type="button" class="bl" data-action="mysettings" ${ui.view === 'mysettings' ? 'aria-current="page"' : ''}>Settings</button>
     ${isMod() ? `<span class="sep">/</span><button type="button" class="bl" data-action="staff" ${ui.view === 'staff' ? 'aria-current="page"' : ''}>Staff${staffN ? `<span class="cnt">${staffN}</span>` : ''}</button>` : ''}</nav></div></header>
     <main class="main gut">${timeoutBanner}${main}
     <div class="foot"><span>Threads <b>${G.threads.length}</b></span><span>Users <b>${Object.values(G.users).filter(u => u.status === 'approved').length}</b></span>${nu ? `<span>Newest user <b>${esc(nu.username)}</b></span>` : ''}<span>Board wipes <b>${esc(w.text)}</b> (${w.days} ${w.days === 1 ? 'day' : 'days'})</span></div></main>`;
@@ -629,7 +699,7 @@ function homeHTML() {
 function catCard(t, i) {
   const img = safeImg(t.image);
   return `<article class="cat${i === 0 ? ' top1' : ''}${isBanned(t.authorUid) ? ' glx' : ''}"><button type="button" class="catmain" data-action="open" data-id="${t.id}"><span class="thumb">${img ? `<img src="${img}" alt="">` : av(t.authorUid, 64, t.authorName)}</span>
-    <span class="cstats">R: ${t.replyCount} / B: ${t.bumps}</span><span class="ct">${esc(t.title)}</span><span class="cs">${esc(t.body)}</span>
+    <span class="cstats">R: ${t.replyCount} / B: ${t.bumps}</span><span class="ct">${esc(t.title)}</span><span class="cs">${emoText(esc(t.body))}</span>
     <span class="cby">${av(t.authorUid, 22, t.authorName)}${nameHTML(t.authorUid, t.authorName)}<span>· ${ago(ms(t.bumpedAt))}</span></span></button>
     <button type="button" class="btn sm catbump" data-action="bump" data-id="${t.id}" aria-label="Bump ${esc(t.title)}">Bump</button></article>`;
 }
@@ -637,12 +707,13 @@ function sectionHTML() {
   const s = secById(ui.section);
   if (!s) { ui.view = 'home'; return homeHTML(); }
   const threads = sortedThreads(s.id);
+  const canStart = canStartIn(s);
   let h = `<div><h1 class="h1">${esc(s.name)}</h1><div class="desc">${esc(s.desc)}</div></div>
-    <div class="row"><button type="button" class="btn" data-action="compose" ${isTimedOut() ? 'disabled' : ''}>${ui.composing ? 'Cancel' : 'Start a new thread'}</button>
+    <div class="row">${canStart ? `<button type="button" class="btn" data-action="compose" ${isTimedOut() ? 'disabled' : ''}>${ui.composing ? 'Cancel' : 'Start a new thread'}</button>` : '<span class="warn">Only admins and above can start threads here. You can reply to them.</span>'}
     <button type="button" class="btn sm ghost" data-action="layout" data-l="catalog" aria-pressed="${ui.layout === 'catalog'}">Catalog</button>
     <button type="button" class="btn sm ghost" data-action="layout" data-l="list" aria-pressed="${ui.layout === 'list'}">List</button>
     <span class="fine">Newest, replied and bumped threads rise to the top.</span></div>`;
-  if (ui.composing) h += `<form class="form" data-form="post"><label class="l" for="p-title">Subject</label><input id="p-title" type="text" maxlength="70" required placeholder="What is this about?"><label class="l" for="p-body">Comment</label><textarea id="p-body" maxlength="1500" required></textarea>${imgPicker('post')}<div class="row"><button class="btn" type="submit">Post thread</button></div></form>`;
+  if (ui.composing && canStart) h += `<form class="form" data-form="post"><label class="l" for="p-title">Subject</label><input id="p-title" type="text" maxlength="70" required placeholder="What is this about?"><label class="l" for="p-body">Comment</label><textarea id="p-body" maxlength="1500" required></textarea>${emojiPicker('p-body')}${imgPicker('post')}<div class="row"><button class="btn" type="submit">Post thread</button></div></form>`;
   if (!G.ready.threads) return h + '<div class="empty">Loading threads...</div>';
   if (!threads.length) return h + `<div class="empty">Nothing here yet. Start the month with the first thread in ${esc(s.name)}.</div>`;
   return h + (ui.layout === 'catalog' ? `<div class="catalog">${threads.map(catCard).join('')}</div>` : `<div class="list">${threads.map((t, i) => postRow(t, i, false)).join('')}</div>`);
@@ -653,7 +724,7 @@ function postBox(o) {
   const acts = (!mine ? `<button type="button" class="btn sm ghost" data-action="report" data-kind="${o.kind}" data-rid="${o.id || ''}">Report</button>` : '') +
     (mine ? `<button type="button" class="btn sm danger" data-action="selfdel" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>`
       : isMod() ? `<button type="button" class="btn sm danger" data-action="delpost" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>` : '');
-  return `<div class="pb${o.op ? ' op' : ''}${isBanned(o.authorUid) ? ' glx' : ''}" id="no-${o.no}"><div class="ph">${av(o.authorUid, 26, o.authorName)}${nameHTML(o.authorUid, o.authorName)}<span>${stamp(ms(o.createdAt))}</span>
+  return `<div class="pb${o.op ? ' op' : ''}${isBanned(o.authorUid) ? ' glx' : ''}" id="no-${o.no}"><div class="ph">${av(o.authorUid, 26, o.authorName)}${nameHTML(o.authorUid, o.authorName, true)}<span>${stamp(ms(o.createdAt))}</span>
     <button type="button" class="no" data-action="quote" data-no="${o.no}" aria-label="Quote post ${o.no}">No.${o.no}</button>${o.op ? '<span class="tag dim">OP</span>' : ''}<span class="acts">${acts}</span></div>
     <div class="pbody">${img ? `<button type="button" class="imgbtn" data-action="zoom" aria-label="Toggle image size"><img src="${img}" alt="Image posted by ${esc(o.authorName)}"></button>` : ''}${o.title ? `<div class="h1" style="font-size:22px;margin-bottom:6px">${esc(o.title)}</div>` : ''}<div class="txt">${fmt(o.text)}</div></div></div>`;
 }
@@ -664,11 +735,11 @@ function threadHTML() {
   return `<div class="row"><button type="button" class="btn sm ghost" data-action="section" data-id="${t.section}">&lt; ${esc(s.name)}</button><button type="button" class="btn sm" data-action="bump" data-id="${t.id}">Bump to top</button><span class="label">Rank #${rankOf(t)} · R: ${t.replyCount}</span></div>` +
     postBox({ id: t.id, kind: 'thread', op: true, no: t.no, authorUid: t.authorUid, authorName: t.authorName, createdAt: t.createdAt, text: t.body, image: t.image, title: t.title }) +
     G.replies.map(r => postBox({ id: r.id, kind: 'reply', op: false, no: r.no, authorUid: r.authorUid, authorName: r.authorName, createdAt: r.createdAt, text: r.text, image: r.image })).join('') +
-    `<form class="form" data-form="reply"><label class="l" for="r-text">Reply (this bumps the thread to the top)</label><textarea id="r-text" maxlength="800" required style="min-height:90px" ${isTimedOut() ? 'disabled' : ''}></textarea>${imgPicker('reply')}
+    `<form class="form" data-form="reply"><label class="l" for="r-text">Reply (this bumps the thread to the top)</label><textarea id="r-text" maxlength="800" required style="min-height:90px" ${isTimedOut() ? 'disabled' : ''}></textarea>${emojiPicker('r-text')}${imgPicker('reply')}
     <div class="row"><button class="btn" type="submit" ${isTimedOut() ? 'disabled' : ''}>Post reply</button><span class="fine">Click a post number to quote it. Start a line with &gt; for green text.</span></div></form>`;
 }
 function userCard(u, i, markNew) {
-  return `<div class="user">${av(u.id, 44)}<div class="nm"><span class="rn"${realTip(u.id)}>${esc(u.username)}</span> ${badge(u.role)}${markNew && i === 0 ? ' <span class="tag">NEW</span>' : ''}<div class="joined">Joined ${dateStr(ms(u.createdAt))}</div></div></div>`;
+  return `<button type="button" class="user" data-action="viewuser" data-uid="${esc(u.id)}">${av(u.id, 44)}<span class="nm" style="display:block"><span class="rn"${realTip(u.id)}>${esc(u.username)}</span> ${badge(u.role)}${markNew && i === 0 ? ' <span class="tag">NEW</span>' : ''}<span class="joined" style="display:block">Joined ${dateStr(ms(u.createdAt))}</span></span></button>`;
 }
 function usersHTML() {
   const all = Object.values(G.users).filter(u => u.status === 'approved');
@@ -676,18 +747,60 @@ function usersHTML() {
   const members = all.filter(u => rk(u.role) === 0).sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
   const nu = newestUser();
   return `<h1 class="h1">Users</h1>${nu ? `<div class="newest">${av(nu.id, 72)}<div><span class="label">Newest user</span><div class="name">${esc(nu.username)}</div><div class="desc">Joined ${ago(ms(nu.createdAt))}</div></div></div>` : ''}
-    <span class="label">Staff</span><div class="users">${staff.map(userCard).join('')}</div>
+    <span class="label">Staff</span><div class="users">${staff.map((u, i) => userCard(u, i, false)).join('')}</div>
     <span class="label">${members.length} members, newest first</span><div class="users">${members.map((u, i) => userCard(u, i, true)).join('')}</div>`;
+}
+async function loadProfile(uid) {
+  const tok = G.prof = { uid, replies: [], loading: true, error: null };
+  try {
+    const ts = G.threads.filter(t => t.replyCount > 0), out = [];
+    for (let i = 0; i < ts.length; i += 15) {
+      const res = await Promise.all(ts.slice(i, i + 15).map(t => getDocs(query(collection(db, 'threads', t.id, 'replies'), where('authorUid', '==', uid)))
+        .then(s => s.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, threadId: t.id, threadTitle: t.title })))));
+      res.forEach(a => out.push(...a));
+      if (G.prof !== tok) return;
+    }
+    out.sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+    tok.replies = out;
+  } catch (e) { tok.error = getErr(e); }
+  if (G.prof === tok) { tok.loading = false; softRender(); }
+}
+function userProfileHTML() {
+  const uid = ui.profileUid, u = userOf(uid);
+  const back = '<div class="row"><button type="button" class="btn sm ghost" data-action="back">&lt; Back</button></div>';
+  if (!u) return back + '<div class="empty">User not found.</div>';
+  const threads = G.threads.filter(t => t.authorUid === uid).sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+  const P = G.prof && G.prof.uid === uid ? G.prof : { replies: [], loading: true, error: null };
+  const reps = P.replies;
+  const recvd = threads.reduce((a, t) => a + (t.replyCount || 0), 0), bumps = threads.reduce((a, t) => a + (t.bumps || 0), 0);
+  const to = u.timeoutUntil ? ms(u.timeoutUntil) : 0;
+  const state = u.status === 'banned' ? 'Banned' : to > Date.now() ? 'Timed out until ' + stamp(to) : u.status === 'approved' ? 'Active' : u.status;
+  const stat = (k, v) => `<div class="stat"><span class="label">${k}</span><span class="sv">${v}</span></div>`;
+  const repN = P.loading ? '...' : reps.length;
+  const tl = threads.slice(0, 10).map(t => `<button type="button" class="item" data-action="open" data-id="${t.id}"><div class="row"><span class="h2">${esc(t.title)}</span><span class="tag dim">No.${esc(t.no)}</span><span class="fine">${esc(secById(t.section) ? secById(t.section).name : '')} · ${t.replyCount} ${t.replyCount === 1 ? 'reply' : 'replies'} · ${ago(ms(t.createdAt))}</span></div></button>`).join('');
+  const rl = reps.slice(0, 10).map(r => `<button type="button" class="item" data-action="openreply" data-id="${esc(r.threadId)}" data-no="${esc(r.no)}"><div class="row"><span class="tag dim">No.${esc(r.no)}</span><span class="fine">in ${esc(r.threadTitle)} · ${ago(ms(r.createdAt))}</span></div><div class="q">${emoText(esc((r.text || '').slice(0, 200)))}</div></button>`).join('');
+  return back + `<div class="form" style="max-width:none"><div class="row">${av(uid, 96)}<div><div style="font-size:30px">${nameHTML(uid)}</div><div class="desc">Joined ${dateStr(ms(u.createdAt))}</div></div></div>
+    ${uid === G.user.uid ? '<div class="row"><button type="button" class="btn sm ghost" data-action="profile">Edit your profile</button></div>' : ''}</div>
+    <div class="stats">${stat('Rank', esc(ROLE_LABEL[u.role] || 'MEMBER'))}${stat('Status', esc(state))}${stat('Threads', threads.length)}${stat('Replies', repN)}${stat('Total posts', P.loading ? '...' : threads.length + reps.length)}${stat('Replies received', recvd)}${stat('Bumps on threads', bumps)}</div>
+    <span class="label">Newest threads</span>${tl || '<div class="empty">No threads this month.</div>'}
+    <span class="label">Newest replies</span>${P.error ? `<div class="empty">Could not load replies (${esc(P.error)}).</div>` : P.loading ? '<div class="empty">Loading replies...</div>' : (rl || '<div class="empty">No replies this month.</div>')}
+    <div class="fine">Stats cover this month only. Everything is wiped at the start of each month.</div>`;
+}
+function mySettingsHTML() {
+  const cur = getTheme();
+  return `<h1 class="h1">Settings</h1><div class="form"><span class="label">Theme</span>
+    <div class="themes">${THEMES.map(t => `<button type="button" class="btn sm ${cur === t[0] ? '' : 'ghost'}" data-action="theme" data-t="${t[0]}" aria-pressed="${cur === t[0]}">${t[1]}</button>`).join('')}</div>
+    <div class="fine">Saved on this device only.</div>
+    <div class="row"><button type="button" class="btn sm ghost" data-action="profile">Edit your profile</button></div></div>`;
 }
 function profileHTML() {
   const u = G.me;
   return `<h1 class="h1">Your profile</h1><div class="form"><div class="row">${av(u.id, 96)}<div><div style="font-size:30px">${esc(u.username)} ${badge(u.role)}</div><div class="desc">Joined ${dateStr(ms(u.createdAt))}</div></div></div>
     <div class="row"><span>Your name: ${G.myReal ? esc(G.myReal.name) : 'not set'}</span><button type="button" class="btn sm ghost" data-action="editreal">${G.myReal ? 'Change name' : 'Add name'}</button></div>
     <div class="fine">${G.settings.showRealNames ? 'Everyone can see this when they hover over your username.' : 'Only admins can see this when they hover over your username.'}</div>
-    ${isMod() ? `<span class="label">Staff profile picture</span>${imgPicker('pfp')}
+    <span class="label">Profile picture</span>${imgPicker('pfp')}
       <div class="row"><button type="button" class="btn sm" data-action="savepfp">Save picture</button></div>
-      <div class="fine">Staff only. Pick any image under 2 MB; it is shrunk to ${PFP_PX}px to fit. Members all use the default picture.</div>`
-      : '<div class="fine">Everyone uses the same profile picture. Custom pictures are for staff only.</div>'}
+      <div class="fine">Pick any image under 1 MB. It is shrunk to ${PFP_PX}px to fit. You show the cooldown picture while timed out.</div>
     ${safeImg(u.pfp) ? '<div class="row"><button type="button" class="btn sm ghost" data-action="resetpfp">Reset to default picture</button></div>' : ''}</div>`;
 }
 function rulesHTML() {
@@ -812,6 +925,8 @@ function render(keepPending) {
   ensureReplies();
   let main;
   switch (ui.view) {
+    case 'userprofile': main = userProfileHTML(); break;
+    case 'mysettings': main = mySettingsHTML(); break;
     case 'users': main = usersHTML(); break;
     case 'profile': main = profileHTML(); break;
     case 'rules': main = rulesHTML(); break;
@@ -825,7 +940,7 @@ function render(keepPending) {
 function softRender() {
   const a = document.activeElement;
   const typing = a && a.matches && a.matches('textarea, input[type=text], input[type=password]') && a.value && $app.contains(a);
-  if (typing || pending.post || pending.reply || pending.pfp || M) return;
+  if (typing || pending.post || pending.reply || pending.pfp || M || document.querySelector('.emopanel:not([hidden])')) return;
   render(true);
 }
 function go(view, sec) { ui.view = view; if (sec !== undefined) ui.section = sec; ui.composing = false; render(); window.scrollTo(0, 0); }
@@ -847,6 +962,8 @@ async function doNewPost() {
   const title = document.getElementById('p-title').value.trim(), body = document.getElementById('p-body').value.trim();
   if (!title || !body || ui.busy) return;
   if (isTimedOut()) return pop('Timed out', 'You cannot post while timed out.', 'bad');
+  const sec0 = secById(ui.section);
+  if (sec0 && !canStartIn(sec0)) return pop('Admins only', 'Only admins and above can start threads in ' + sec0.name + '. You can reply to threads there.', 'bad');
   ui.busy = true;
   try {
     const counter = doc(db, 'meta', 'counter'), ref = doc(collection(db, 'threads'));
@@ -1274,6 +1391,29 @@ document.addEventListener('click', async e => {
     case 'section': go('section', d.id); break;
     case 'users': go('users'); break;
     case 'profile': go('profile'); break;
+    case 'mysettings': go('mysettings'); break;
+    case 'theme': try { localStorage.setItem('vee-theme', d.t); } catch (err) {} applyTheme(d.t); render(); break;
+    case 'viewuser': ui.back = { view: ui.view, section: ui.section, threadId: ui.threadId }; ui.profileUid = d.uid; loadProfile(d.uid); go('userprofile'); break;
+    case 'back': { const b = ui.back || { view: 'home' }; ui.threadId = b.threadId || null; go(b.view === 'userprofile' ? 'home' : b.view, b.section); break; }
+    case 'openreply': {
+      ui.threadId = d.id; const t = findThread(d.id); if (t) ui.section = t.section; go('thread');
+      let n = 0; const iv = setInterval(() => { const el = document.getElementById('no-' + d.no); if (el) { clearInterval(iv); el.scrollIntoView({ block: 'center' }); el.classList.add('hl'); setTimeout(() => el.classList.remove('hl'), 1600); } else if (++n > 25) clearInterval(iv); }, 150);
+      break;
+    }
+    case 'emojitoggle': {
+      const p = document.getElementById('emo-' + d.target); if (!p) break;
+      if (p.hidden) { p.hidden = false; p.innerHTML = '<input type="text" class="emosearch" data-target="' + d.target + '" placeholder="Search emojis" aria-label="Search emojis" autocomplete="off"><div class="emogrid"></div>'; renderEmoGrid(d.target, ''); }
+      else { p.hidden = true; p.innerHTML = ''; }
+      break;
+    }
+    case 'emojipick': {
+      const ta = document.getElementById(d.target); if (!ta || ta.disabled) break;
+      const ins = ':' + d.name + ': ', s = ta.selectionStart == null ? ta.value.length : ta.selectionStart, e2 = ta.selectionEnd == null ? s : ta.selectionEnd;
+      const nv = ta.value.slice(0, s) + ins + ta.value.slice(e2);
+      if (ta.maxLength > 0 && nv.length > ta.maxLength) { pop('Too long', 'That emoji would go past the character limit.', 'bad'); break; }
+      ta.value = nv; ta.focus(); ta.selectionStart = ta.selectionEnd = s + ins.length;
+      break;
+    }
     case 'rules': go('rules'); break;
     case 'staff': go('staff'); break;
     case 'stafftab': ui.staffTab = d.tab; render(); break;
@@ -1285,7 +1425,6 @@ document.addEventListener('click', async e => {
     case 'quote': { const ta = document.getElementById('r-text'); if (ta && !ta.disabled) { ta.value += (ta.value && !/\n$/.test(ta.value) ? '\n' : '') + '>>' + d.no + '\n'; ta.focus(); ta.scrollIntoView({ block: 'center' }); } break; }
     case 'clearimg': { pending[d.kind] = null; const inp = document.getElementById('img-' + d.kind); if (inp) inp.value = ''; setPreview(d.kind); break; }
     case 'savepfp': {
-      if (!isMod()) break;
       if (!pending.pfp) { pop('No image', 'Pick an image first.', 'bad'); break; }
       try { await updateDoc(doc(db, 'users', G.user.uid), { pfp: pending.pfp }); pending.pfp = null; render(true); pop('Saved', 'Your new profile picture is live.'); }
       catch (err) { pop('Could not save', 'Something went wrong (' + getErr(err) + ').', 'bad'); }
@@ -1333,7 +1472,7 @@ document.addEventListener('change', e => {
     readImage(inp.files[0], isPfp ? PFP_PX : 1200, isPfp ? PFP_CHARS : 800000, (err, url) => {
       if (err) { inp.value = ''; pop('Image rejected', err, 'bad'); return; }
       pending[kind] = url; setPreview(kind);
-    });
+    }, isPfp ? MAX_PFP_UPLOAD : MAX_UPLOAD);
     return;
   }
   if (!M) return;
@@ -1362,9 +1501,11 @@ document.addEventListener('submit', e => {
   else if (k === 'filter') saveFilter();
   else if (k === 'realname') saveRealName();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (M && M.kind === 'realname' && M.first) return; if (M) closeModal(); else if (queue.length) closePop(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('.emosearch')) { e.preventDefault(); return; } if (e.key === 'Escape') { if (M && M.kind === 'realname' && M.first) return; if (M) closeModal(); else if (queue.length) closePop(); } });
+document.addEventListener('input', e => { const s = e.target.closest && e.target.closest('.emosearch'); if (s) renderEmoGrid(s.dataset.target, s.value); });
 setInterval(() => { if (G.user && isApproved() && !queue.length) softRender(); }, 60000);
 
+loadEmojis();
 render();
 </script>
 </body>
