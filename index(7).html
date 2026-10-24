@@ -17,6 +17,7 @@
   color-scheme: dark;
 }
 :root[data-theme="bw"] { --bg: #000; --bar: #0d0d0d; --row: #161616; --row-hi: #2a2a2a; --glow: #f2f2f2; --dim: #9b9b9b; --line: #4a4a4a; --alert: #ff6a4d; --amber: #d6d6d6; --quote: #bdbdbd; --cyan: #a8a8a8; --glow-rgb: 242,242,242; }
+:root[data-theme="purple"] { --bg: #0a0412; --bar: #1a0a30; --row: #240f42; --row-hi: #3a1a68; --glow: #c9a0ff; --dim: #9468d6; --line: #5a2f94; --alert: #ff6a4d; --amber: #ffd36b; --quote: #e0c4ff; --cyan: #7de8ff; --glow-rgb: 201,160,255; }
 :root[data-theme="blue"] { --bg: #020712; --bar: #061a3a; --row: #0a2147; --row-hi: #123670; --glow: #7cc4ff; --dim: #5a95d6; --line: #1f4f94; --alert: #ff6a4d; --amber: #ffd36b; --quote: #9fe0ff; --cyan: #7de8ff; --glow-rgb: 124,196,255; }
 * { box-sizing: border-box; }
 html { background: var(--bg); }
@@ -273,7 +274,7 @@ const TIMEOUT_PFP = 'https://cdn.jsdelivr.net/gh/Joeclickavit/ujkdjkadsjdsalkjds
 const EMO_BASE = 'https://cdn.jsdelivr.net/gh/Joeclickavit/retroemojis@main/';
 const EMO_GH = 'https://api.github.com/repos/Joeclickavit/retroemojis/git/trees/main?recursive=1';
 const EMO_API = 'https://data.jsdelivr.com/v1/packages/gh/Joeclickavit/retroemojis@main?structure=flat';
-const THEMES = [['green', 'Green terminal'], ['bw', 'Black & white'], ['blue', 'Blue & black']];
+const THEMES = [['green', 'Green terminal'], ['bw', 'Black & white'], ['blue', 'Blue & black'], ['purple', 'Purple']];
 function getTheme() { try { return localStorage.getItem('vee-theme') || 'green'; } catch (e) { return 'green'; } }
 function applyTheme(t) { if (t === 'green') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); }
 applyTheme(getTheme());
