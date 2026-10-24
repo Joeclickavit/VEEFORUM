@@ -250,6 +250,7 @@ const MAX_UPLOAD = 2 * 1024 * 1024, MAX_PFP_UPLOAD = 1024 * 1024; // pictures fo
 const MAX_THREADS = 300; // oldest threads beyond this are removed so the database never fills up
 const SECTIONS = [
   { id: 'announcements', name: 'ANNOUNCEMENTS', desc: 'Official news from staff. Only admins post threads; everyone can reply.', locked: true },
+  { id: 'moddiscussions', name: 'Mod Discussions', desc: 'Staff chat. Only mods and above can post or reply here.', staffOnly: true },
   { id: 'dandys', name: 'DandysWorld', desc: "Discussions of Dandy's World" },
   { id: 'astros', name: 'Discussions', desc: 'Discuss Astros Dreamland' },
   { id: 'bugs', name: 'Bug Report', desc: 'Report bugs about Astros Dreamland' },
@@ -293,7 +294,8 @@ const dateStr = t => new Date(t).toLocaleDateString(undefined, { month: 'short',
 const stamp = t => { const d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
 const allSections = () => SECTIONS.concat(G.boards);
 const secById = id => allSections().find(s => s.id === id);
-const canStartIn = s => !s.locked || isAdmin();
+const canStartIn = s => s.staffOnly ? isMod() : (!s.locked || isAdmin());
+const canReplyIn = s => !s || !s.staffOnly || isMod();
 const ruleById = id => RULES.find(r => r.id === id);
 const ruleName = id => id === 'other' ? 'Other' : (ruleById(id) ? ruleById(id).text : '(removed rule)');
 const isBanned = uid => { const u = G.users[uid]; return !!u && u.status === 'banned'; };
@@ -710,7 +712,7 @@ function sectionHTML() {
   const threads = sortedThreads(s.id);
   const canStart = canStartIn(s);
   let h = `<div><h1 class="h1">${esc(s.name)}</h1><div class="desc">${esc(s.desc)}</div></div>
-    <div class="row">${canStart ? `<button type="button" class="btn" data-action="compose" ${isTimedOut() ? 'disabled' : ''}>${ui.composing ? 'Cancel' : 'Start a new thread'}</button>` : '<span class="warn">Only admins and above can start threads here. You can reply to them.</span>'}
+    <div class="row">${canStart ? `<button type="button" class="btn" data-action="compose" ${isTimedOut() ? 'disabled' : ''}>${ui.composing ? 'Cancel' : 'Start a new thread'}</button>` : (s.staffOnly ? '<span class="warn">Only mods and above can post or reply in this board.</span>' : '<span class="warn">Only admins and above can start threads here. You can reply to them.</span>')}
     <button type="button" class="btn sm ghost" data-action="layout" data-l="catalog" aria-pressed="${ui.layout === 'catalog'}">Catalog</button>
     <button type="button" class="btn sm ghost" data-action="layout" data-l="list" aria-pressed="${ui.layout === 'list'}">List</button>
     <span class="fine">Newest, replied and bumped threads rise to the top.</span></div>`;
@@ -736,8 +738,8 @@ function threadHTML() {
   return `<div class="row"><button type="button" class="btn sm ghost" data-action="section" data-id="${t.section}">&lt; ${esc(s.name)}</button><button type="button" class="btn sm" data-action="bump" data-id="${t.id}">Bump to top</button><span class="label">Rank #${rankOf(t)} · R: ${t.replyCount}</span></div>` +
     postBox({ id: t.id, kind: 'thread', op: true, no: t.no, authorUid: t.authorUid, authorName: t.authorName, createdAt: t.createdAt, text: t.body, image: t.image, title: t.title }) +
     G.replies.map(r => postBox({ id: r.id, kind: 'reply', op: false, no: r.no, authorUid: r.authorUid, authorName: r.authorName, createdAt: r.createdAt, text: r.text, image: r.image })).join('') +
-    `<form class="form" data-form="reply"><label class="l" for="r-text">Reply (this bumps the thread to the top)</label><textarea id="r-text" maxlength="800" required style="min-height:90px" ${isTimedOut() ? 'disabled' : ''}></textarea>${emojiPicker('r-text')}${imgPicker('reply')}
-    <div class="row"><button class="btn" type="submit" ${isTimedOut() ? 'disabled' : ''}>Post reply</button><span class="fine">Click a post number to quote it. Start a line with &gt; for green text.</span></div></form>`;
+    (canReplyIn(s) ?     `<form class="form" data-form="reply"><label class="l" for="r-text">Reply (this bumps the thread to the top)</label><textarea id="r-text" maxlength="800" required style="min-height:90px" ${isTimedOut() ? 'disabled' : ''}></textarea>${emojiPicker('r-text')}${imgPicker('reply')}
+    <div class="row"><button class="btn" type="submit" ${isTimedOut() ? 'disabled' : ''}>Post reply</button><span class="fine">Click a post number to quote it. Start a line with &gt; for green text.</span></div></form>` : '<div class="box gold"><span class="warn">Only mods and above can reply in this board.</span></div>');
 }
 function userCard(u, i, markNew) {
   return `<button type="button" class="user" data-action="viewuser" data-uid="${esc(u.id)}">${av(u.id, 44)}<span class="nm" style="display:block"><span class="rn"${realTip(u.id)}>${esc(u.username)}</span> ${badge(u.role)}${markNew && i === 0 ? ' <span class="tag">NEW</span>' : ''}<span class="joined" style="display:block">Joined ${dateStr(ms(u.createdAt))}</span></span></button>`;
@@ -949,6 +951,7 @@ function go(view, sec) { ui.view = view; if (sec !== undefined) ui.section = sec
 /* ---------- forum actions ---------- */
 async function doBump(id) {
   const t = findThread(id); if (!t) return;
+  if (!canReplyIn(secById(t.section))) return pop('Staff only', 'Only mods and above can bump threads in this board.', 'bad');
   if (isTimedOut()) return pop('Timed out', 'You cannot bump while timed out.', 'bad');
   const before = rankOf(t);
   const wait = ms(t.bumpedAt) + 5 * MIN - Date.now();
@@ -964,7 +967,7 @@ async function doNewPost() {
   if (!title || !body || ui.busy) return;
   if (isTimedOut()) return pop('Timed out', 'You cannot post while timed out.', 'bad');
   const sec0 = secById(ui.section);
-  if (sec0 && !canStartIn(sec0)) return pop('Admins only', 'Only admins and above can start threads in ' + sec0.name + '. You can reply to threads there.', 'bad');
+  if (sec0 && !canStartIn(sec0)) return pop(sec0.staffOnly ? 'Staff only' : 'Admins only', sec0.staffOnly ? 'Only mods and above can post in ' + sec0.name + '.' : 'Only admins and above can start threads in ' + sec0.name + '. You can reply to threads there.', 'bad');
   ui.busy = true;
   try {
     const counter = doc(db, 'meta', 'counter'), ref = doc(collection(db, 'threads'));
@@ -983,6 +986,7 @@ async function doReply() {
   const text = document.getElementById('r-text').value.trim();
   const t = findThread(ui.threadId);
   if (!t || !text || ui.busy) return;
+  if (!canReplyIn(secById(t.section))) return pop('Staff only', 'Only mods and above can reply in this board.', 'bad');
   if (isTimedOut()) return pop('Timed out', 'You cannot reply while timed out.', 'bad');
   ui.busy = true;
   const before = rankOf(t);
