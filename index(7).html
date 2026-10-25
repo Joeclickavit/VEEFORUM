@@ -305,6 +305,13 @@ function wipeInfo() {
   const t = nextWipeMs(), days = Math.max(1, Math.ceil((t - Date.now()) / DAY));
   return { days, text: new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) };
 }
+function countdownText() {
+  const d = nextWipeMs() - Date.now();
+  if (d <= 0) return 'wiping now...';
+  const days = Math.floor(d / DAY), h = Math.floor(d % DAY / HOUR), m = Math.floor(d % HOUR / MIN), sec = Math.floor(d % MIN / 1000);
+  const p = n => String(n).padStart(2, '0');
+  return days + 'd ' + p(h) + 'h ' + p(m) + 'm ' + p(sec) + 's';
+}
 const emailFor = name => name.toLowerCase() + EMAIL_DOMAIN;
 
 /* ---------- state ---------- */
@@ -671,7 +678,7 @@ function shell(main) {
     <span class="sep">/</span><button type="button" class="bl" data-action="mysettings" ${ui.view === 'mysettings' ? 'aria-current="page"' : ''}>Settings</button>
     ${isMod() ? `<span class="sep">/</span><button type="button" class="bl" data-action="staff" ${ui.view === 'staff' ? 'aria-current="page"' : ''}>Staff${staffN ? `<span class="cnt">${staffN}</span>` : ''}</button>` : ''}</nav></div></header>
     <main class="main gut">${timeoutBanner}${main}
-    <div class="foot"><span>Threads <b>${G.threads.length}</b></span><span>Users <b>${Object.values(G.users).filter(u => u.status === 'approved').length}</b></span>${nu ? `<span>Newest user <b>${esc(nu.username)}</b></span>` : ''}<span>Board wipes <b>${esc(w.text)}</b> (${w.days} ${w.days === 1 ? 'day' : 'days'})</span></div></main>`;
+    <div class="foot"><span>Threads <b>${G.threads.length}</b></span><span>Users <b>${Object.values(G.users).filter(u => u.status === 'approved').length}</b></span>${nu ? `<span>Newest user <b>${esc(nu.username)}</b></span>` : ''}<span>Board wipes in <b class="wipecd">${countdownText()}</b> (${esc(w.text)})</span></div></main>`;
 }
 function newestUser() {
   const a = Object.values(G.users).filter(u => u.status === 'approved' && rk(u.role) === 0).sort((x, y) => ms(y.createdAt) - ms(x.createdAt));
@@ -696,7 +703,7 @@ function homeHTML() {
       const ps = sortedThreads(s.id), top = ps[0], rep = ps.reduce((a, p) => a + (p.replyCount || 0), 0);
       return `<button type="button" class="brow" data-action="section" data-id="${s.id}"><span><span class="bn">${esc(s.name)}</span><span class="desc">${esc(s.desc)}</span></span><span class="num hide">${ps.length} threads / ${rep} replies</span><span class="num">${top ? ago(ms(top.bumpedAt)) : 'empty'}</span></button>`;
     }).join('')}</div>
-    <div class="row" style="align-items:stretch">${nuBox}<div class="box" style="flex:1 1 240px;justify-content:center"><span class="label">Monthly wipe</span><span class="warn">${w.days} ${w.days === 1 ? 'day' : 'days'} left (${esc(w.text)})</span></div></div>
+    <div class="row" style="align-items:stretch">${nuBox}<div class="box" style="flex:1 1 240px;justify-content:center"><span class="label">Monthly wipe: all threads deleted</span><span class="warn wipecd" style="font-size:32px;font-variant-numeric:tabular-nums">${countdownText()}</span><span class="fine">${esc(w.text)}</span></div></div>
     <span class="label">Latest activity</span>${recent.length ? `<div class="list">${recent.map((t, i) => postRow(t, i, true)).join('')}</div>` : '<div class="empty">No threads yet this month. Be the first to post.</div>'}`;
 }
 function catCard(t, i) {
@@ -1509,6 +1516,14 @@ document.addEventListener('submit', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('.emosearch')) { e.preventDefault(); return; } if (e.key === 'Escape') { if (M && M.kind === 'realname' && M.first) return; if (M) closeModal(); else if (queue.length) closePop(); } });
 document.addEventListener('input', e => { const s = e.target.closest && e.target.closest('.emosearch'); if (s) renderEmoGrid(s.dataset.target, s.value); });
 setInterval(() => { if (G.user && isApproved() && !queue.length) softRender(); }, 60000);
+
+let wipeReloaded = false;
+setInterval(() => {
+  const t = countdownText();
+  document.querySelectorAll('.wipecd').forEach(el => { if (el.textContent !== t) el.textContent = t; });
+  // at zero, reload once so the thread list re-queries for the new month
+  if (!wipeReloaded && nextWipeMs() - Date.now() <= 0) { wipeReloaded = true; setTimeout(() => location.reload(), 5000); }
+}, 1000);
 
 loadEmojis();
 render();
