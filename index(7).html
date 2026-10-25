@@ -732,9 +732,9 @@ function postBox(o) {
   const img = safeImg(o.image);
   const mine = o.authorUid === G.user.uid;
   const acts = (!mine ? `<button type="button" class="btn sm ghost" data-action="report" data-kind="${o.kind}" data-rid="${o.id || ''}">Report</button>` : '') +
-    (mine ? `<button type="button" class="btn sm danger" data-action="selfdel" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>`
+    (mine ? `<button type="button" class="btn sm ghost" data-action="edit" data-kind="${o.kind}" data-rid="${o.id || ''}">Edit</button><button type="button" class="btn sm danger" data-action="selfdel" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>`
       : isMod() ? `<button type="button" class="btn sm danger" data-action="delpost" data-kind="${o.kind}" data-rid="${o.id || ''}">Delete</button>` : '');
-  return `<div class="pb${o.op ? ' op' : ''}${isBanned(o.authorUid) ? ' glx' : ''}" id="no-${o.no}"><div class="ph">${av(o.authorUid, 26, o.authorName)}${nameHTML(o.authorUid, o.authorName, true)}<span>${stamp(ms(o.createdAt))}</span>
+  return `<div class="pb${o.op ? ' op' : ''}${isBanned(o.authorUid) ? ' glx' : ''}" id="no-${o.no}"><div class="ph">${av(o.authorUid, 26, o.authorName)}${nameHTML(o.authorUid, o.authorName, true)}<span>${stamp(ms(o.createdAt))}</span>${o.editedAt ? '<span class="tag dim" title="Edited ' + esc(stamp(ms(o.editedAt))) + '">EDITED</span>' : ''}
     <button type="button" class="no" data-action="quote" data-no="${o.no}" aria-label="Quote post ${o.no}">No.${o.no}</button>${o.op ? '<span class="tag dim">OP</span>' : ''}<span class="acts">${acts}</span></div>
     <div class="pbody">${img ? `<button type="button" class="imgbtn" data-action="zoom" aria-label="Toggle image size"><img src="${img}" alt="Image posted by ${esc(o.authorName)}"></button>` : ''}${o.title ? `<div class="h1" style="font-size:22px;margin-bottom:6px">${esc(o.title)}</div>` : ''}<div class="txt">${fmt(o.text)}</div></div></div>`;
 }
@@ -743,8 +743,8 @@ function threadHTML() {
   if (!t) { if (!G.ready.threads) return '<div class="empty">Loading thread...</div>'; ui.view = 'section'; return sectionHTML(); }
   const s = secById(t.section);
   return `<div class="row"><button type="button" class="btn sm ghost" data-action="section" data-id="${t.section}">&lt; ${esc(s.name)}</button><button type="button" class="btn sm" data-action="bump" data-id="${t.id}">Bump to top</button><span class="label">Rank #${rankOf(t)} · R: ${t.replyCount}</span></div>` +
-    postBox({ id: t.id, kind: 'thread', op: true, no: t.no, authorUid: t.authorUid, authorName: t.authorName, createdAt: t.createdAt, text: t.body, image: t.image, title: t.title }) +
-    G.replies.map(r => postBox({ id: r.id, kind: 'reply', op: false, no: r.no, authorUid: r.authorUid, authorName: r.authorName, createdAt: r.createdAt, text: r.text, image: r.image })).join('') +
+    postBox({ id: t.id, kind: 'thread', op: true, no: t.no, authorUid: t.authorUid, authorName: t.authorName, createdAt: t.createdAt, text: t.body, image: t.image, title: t.title, editedAt: t.editedAt }) +
+    G.replies.map(r => postBox({ id: r.id, kind: 'reply', op: false, no: r.no, authorUid: r.authorUid, authorName: r.authorName, createdAt: r.createdAt, text: r.text, image: r.image, editedAt: r.editedAt })).join('') +
     (canReplyIn(s) ?     `<form class="form" data-form="reply"><label class="l" for="r-text">Reply (this bumps the thread to the top)</label><textarea id="r-text" maxlength="800" required style="min-height:90px" ${isTimedOut() ? 'disabled' : ''}></textarea>${emojiPicker('r-text')}${imgPicker('reply')}
     <div class="row"><button class="btn" type="submit" ${isTimedOut() ? 'disabled' : ''}>Post reply</button><span class="fine">Click a post number to quote it. Start a line with &gt; for green text.</span></div></form>` : '<div class="box gold"><span class="warn">Only mods and above can reply in this board.</span></div>');
 }
@@ -948,8 +948,9 @@ function render(keepPending) {
   $app.innerHTML = shell(main);
 }
 function softRender() {
-  const a = document.activeElement;
-  const typing = a && a.matches && a.matches('textarea, input[type=text], input[type=password]') && a.value && $app.contains(a);
+  // Never re-render while ANY text field on the page holds a draft (not only the focused one),
+  // otherwise switching tabs/clicking away wipes what was typed.
+  const typing = [...$app.querySelectorAll('textarea, input[type=text], input[type=password]')].some(el => !el.disabled && el.value && el.value.trim());
   if (typing || pending.post || pending.reply || pending.pfp || M || document.querySelector('.emopanel:not([hidden])')) return;
   render(true);
 }
@@ -1114,6 +1115,14 @@ function renderModal() {
       <div class="row"><button class="btn" type="submit">Send report</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
     return;
   }
+  if (M.kind === 'edit') {
+    $modal.innerHTML = `<form class="modal" data-form="edit"><h2 class="h1" style="font-size:22px">Edit No.${esc(M.post.no)}</h2>
+      ${M.title != null ? `<label class="label" for="m-edit-title">Subject</label><input id="m-edit-title" type="text" style="min-height:0" maxlength="70" required value="${esc(M.title)}">` : ''}
+      <label class="label" for="m-edit-text">Comment</label><textarea id="m-edit-text" maxlength="${M.post.replyId ? 800 : 1500}" required style="min-height:140px">${esc(M.text)}</textarea>
+      <div class="row"><button class="btn" type="submit">Save</button><button type="button" class="btn ghost" data-action="closemodal">Cancel</button></div></form>`;
+    const ta = document.getElementById('m-edit-text'); if (ta) ta.focus();
+    return;
+  }
   if (M.kind === 'selfdelete') {
     const p = M.post;
     $modal.innerHTML = `<form class="modal bad" data-form="selfdelete"><h2 class="h1" style="font-size:22px">Delete your ${p.replyId ? 'reply' : 'thread'} No.${esc(p.no)}?</h2>
@@ -1234,6 +1243,32 @@ async function submitWarnNow() {
   } catch (e) { pop('Could not warn', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
 }
 /* ---------- own-post deletes, ban reasons, rules editor, boards ---------- */
+function openEdit(kind, rid) {
+  const t = findThread(ui.threadId); if (!t) return;
+  if (isTimedOut()) return pop('Timed out', 'You cannot edit while timed out.', 'bad');
+  if (kind === 'thread') {
+    if (t.authorUid !== G.user.uid) return;
+    return openModal({ kind: 'edit', post: { kind, threadId: t.id, replyId: null, no: t.no }, title: t.title, text: t.body });
+  }
+  const r = G.replies.find(x => x.id === rid); if (!r || r.authorUid !== G.user.uid) return;
+  openModal({ kind: 'edit', post: { kind, threadId: t.id, replyId: r.id, no: r.no }, title: null, text: r.text });
+}
+async function submitEdit() {
+  const p = M.post, text = document.getElementById('m-edit-text').value.trim();
+  const tEl = document.getElementById('m-edit-title'), title = tEl ? tEl.value.trim() : null;
+  if (!text || (tEl && !title)) return pop('Empty', 'Subject and comment cannot be empty.', 'bad');
+  if (isTimedOut()) return pop('Timed out', 'You cannot edit while timed out.', 'bad');
+  if (ui.busy) return;
+  ui.busy = true;
+  try {
+    if (p.replyId) await updateDoc(doc(db, 'threads', p.threadId, 'replies', p.replyId), { text, editedAt: serverTimestamp() });
+    else await updateDoc(doc(db, 'threads', p.threadId), { title, body: text, editedAt: serverTimestamp() });
+    const hit = filterHit((title ? title + '\n' : '') + text);
+    if (hit) setDoc(doc(db, 'reports', 'wf_' + (p.replyId || p.threadId) + '_e' + Date.now().toString(36)), { kind: p.kind, threadId: p.threadId, replyId: p.replyId, targetUid: G.user.uid, targetName: G.me.username, postNo: p.no, excerpt: text.slice(0, 300), rule: 'other', details: ('Word filter matched (edit): ' + hit).slice(0, 300), reporterUid: G.user.uid, reporterName: 'Word filter', status: 'open', createdAt: serverTimestamp() }).catch(() => {});
+    closeModal(); render(true);
+  } catch (e) { pop('Could not edit', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+  ui.busy = false;
+}
 function openSelfDelete(kind, rid) { const p = postFrom(kind, rid); if (!p) return; openModal({ kind: 'selfdelete', post: p }); }
 async function executeSelfDelete() {
   const p = M.post;
@@ -1463,6 +1498,7 @@ document.addEventListener('click', async e => {
     case 'appealyes': decideAppeal(d.uid, true); break;
     case 'appealno': decideAppeal(d.uid, false); break;
     case 'selfdel': openSelfDelete(d.kind, d.rid); break;
+    case 'edit': openEdit(d.kind, d.rid); break;
     case 'editrules': openRulesEditor(); break;
     case 'addrule': collectRules(); M.items.push({ id: 'r' + Date.now().toString(36), text: '', penalty: 'Timeout and a warning', ban: false }); renderModal(); break;
     case 'rmrule': collectRules(); M.items.splice(Number(d.i), 1); renderModal(); break;
@@ -1506,6 +1542,7 @@ document.addEventListener('submit', e => {
   else if (k === 'delete') executeDelete();
   else if (k === 'warnnow') submitWarnNow();
   else if (k === 'selfdelete') executeSelfDelete();
+  else if (k === 'edit') submitEdit();
   else if (k === 'ban') submitBan();
   else if (k === 'rulesedit') saveRules();
   else if (k === 'board') createBoard(f);
