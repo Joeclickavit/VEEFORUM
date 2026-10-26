@@ -318,8 +318,8 @@ const emailFor = name => name.toLowerCase() + EMAIL_DOMAIN;
 const G = {
   emoMap: {}, emoList: [], prof: null,
   user: null, me: null, meLoaded: false, users: {}, threads: [], replies: [], repFor: null,
-  reports: [], modLog: [], warnReqs: [], apps: {}, boards: [], appeals: [], filterWords: [], myAppeal: null, realNames: {}, settings: { showRealNames: false }, myReal: null, myRealLoaded: false, realSkip: false, memberKey: null, ready: { users: false, threads: false },
-  alertsInit: false, prevReports: 0, prevPending: 0, prevReqs: 0, prevAppeals: 0, purged: false, err: null
+  reports: [], modLog: [], warnReqs: [], apps: {}, boards: [], appeals: [], filterWords: [], myAppeal: null, realNames: {}, settings: { showRealNames: false, nameResetAt: 0 }, myReal: null, myRealLoaded: false, realSkip: false, memberKey: null, ready: { users: false, threads: false },
+  alertsInit: false, prevReports: 0, prevPending: 0, prevReqs: 0, prevAppeals: 0, prevNames: 0, purged: false, err: null
 };
 const ui = { profileUid: null, back: null, view: 'home', section: null, threadId: null, composing: false, mode: 'login', layout: 'catalog', staffTab: 'reports', busy: false };
 const pending = { post: null, reply: null, pfp: null };
@@ -343,8 +343,10 @@ const isTimedOut = () => timeoutMs() > Date.now();
 const userOf = uid => G.users[uid];
 const getErr = e => (e && e.code) ? e.code : String(e);
 /* real names: admins always see them; everyone else only when an admin turns the setting on */
+function nameVoid(r) { return !r || r.status === 'denied' || (G.settings.nameResetAt > 0 && ms(r.updatedAt) < G.settings.nameResetAt); }
 const canSeeReal = () => isAdmin() || !!G.settings.showRealNames;
-const realOf = uid => { if (!canSeeReal()) return ''; const r = G.realNames[uid] || (G.user && uid === G.user.uid ? G.myReal : null); return r && r.name ? r.name : ''; };
+const realOf = uid => { if (!canSeeReal()) return ''; const r = G.realNames[uid] || (G.user && uid === G.user.uid ? G.myReal : null); return r && r.name && !nameVoid(r) ? r.name : ''; };
+const pendingNames = () => Object.values(G.realNames).filter(r => r.status === 'pending' && !nameVoid(r) && userOf(r.id) && userOf(r.id).status === 'approved').sort((a, b) => ms(a.updatedAt) - ms(b.updatedAt));
 const realTip = uid => { const n = realOf(uid); return n ? ` title="Real name: ${esc(n)}"` : ''; };
 
 /* ---------- avatars, names ---------- */
@@ -465,7 +467,7 @@ const imgPicker = kind => `<div class="row"><label class="btn sm ghost" for="img
 
 /* ---------- listeners ---------- */
 function onErr(name) { return e => { console.error(name, e); if (getErr(e) === 'permission-denied') G.err = 'permission'; softRender(); }; }
-function stopMember() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; G.users = {}; G.threads = []; G.reports = []; G.modLog = []; G.warnReqs = []; G.apps = {}; G.boards = []; G.appeals = []; G.filterWords = []; G.realNames = {}; G.settings = { showRealNames: false }; if (unsubReal) { unsubReal(); unsubReal = null; } RULES = DEFAULT_RULES.slice(); G.ready = { users: false, threads: false }; G.alertsInit = false; stopReplies(); }
+function stopMember() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; G.users = {}; G.threads = []; G.reports = []; G.modLog = []; G.warnReqs = []; G.apps = {}; G.boards = []; G.appeals = []; G.filterWords = []; G.realNames = {}; G.settings = { showRealNames: false, nameResetAt: 0 }; if (unsubReal) { unsubReal(); unsubReal = null; } RULES = DEFAULT_RULES.slice(); G.ready = { users: false, threads: false }; G.alertsInit = false; stopReplies(); }
 function stopReplies() { if (unsubReplies) { unsubReplies(); unsubReplies = null; } G.replies = []; G.repFor = null; }
 function snapData(d) { return { id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }; }
 function startMember() {
@@ -491,8 +493,9 @@ function startMember() {
     softRender();
   }, onErr('wordfilter')));
   unsubs.push(onSnapshot(doc(db, 'config', 'settings'), s => {
-    G.settings = { showRealNames: !!(s.exists() && s.data().showRealNames) };
-    syncReal(); softRender();
+    const sd = s.exists() ? s.data({ serverTimestamps: 'estimate' }) : {};
+    G.settings = { showRealNames: !!sd.showRealNames, nameResetAt: sd.nameResetAt ? ms(sd.nameResetAt) : 0 };
+    syncReal(); checkRealPrompt(); softRender();
   }, onErr('settings')));
   if (isMod()) {
     unsubs.push(onSnapshot(query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100)), s => { G.reports = s.docs.map(snapData); staffAlerts(); softRender(); }, onErr('reports')));
@@ -506,13 +509,13 @@ function startMember() {
   }
 }
 function syncReal() {
-  const want = isApproved() && canSeeReal();
-  if (want && !unsubReal) unsubReal = onSnapshot(collection(db, 'realNames'), s => { G.realNames = {}; s.forEach(d => { G.realNames[d.id] = snapData(d); }); softRender(); }, e => console.error('realNames', e));
+  const want = isApproved() && (canSeeReal() || isMod());
+  if (want && !unsubReal) unsubReal = onSnapshot(collection(db, 'realNames'), s => { G.realNames = {}; s.forEach(d => { G.realNames[d.id] = snapData(d); }); staffAlerts(); softRender(); }, e => console.error('realNames', e));
   else if (!want && unsubReal) { unsubReal(); unsubReal = null; G.realNames = {}; }
 }
 function checkRealPrompt() {
-  if (M || !G.myRealLoaded || G.myReal || !G.me || G.me.status !== 'approved') return;
-  openModal({ kind: 'realname', first: true });
+  if (M || !G.myRealLoaded || (G.myReal && !nameVoid(G.myReal)) || !G.me || G.me.status !== 'approved') return;
+  openModal({ kind: 'realname', first: true, denied: !!(G.myReal && G.myReal.status === 'denied'), reset: !!(G.myReal && G.myReal.status !== 'denied') });
 }
 function syncMember() {
   const key = isApproved() ? 'a:' + G.me.role : null;
@@ -552,14 +555,15 @@ function openReports() { return G.reports.filter(r => r.status === 'open'); }
 function pendingReqs() { return G.warnReqs.filter(r => r.status === 'pending'); }
 function staffAlerts() {
   if (!G.ready.users) return;
-  const r = isMod() ? openReports().length : 0, p = isAdmin() ? pendingUsers().length : 0, q = isAdmin() ? pendingReqs().length : 0, ap = isAdmin() ? openAppeals().length : 0;
+  const r = isMod() ? openReports().length : 0, p = isAdmin() ? pendingUsers().length : 0, q = isAdmin() ? pendingReqs().length : 0, ap = isAdmin() ? openAppeals().length : 0, nn = isMod() ? pendingNames().length : 0;
   if (G.alertsInit) {
     if (r > G.prevReports) pop('New report', 'A member reported a post. Open Staff, then Reports.');
     if (p > G.prevPending) pop('New application', 'Someone is waiting for approval. Open Staff, then Approvals.');
     if (q > G.prevReqs) pop('Warning request', 'A mod sent a warning request. Open Staff, then Warn requests.');
+    if (nn > G.prevNames) pop('New name', 'A member set a name. Open Staff, then Names, to approve or deny it.');
     if (ap > G.prevAppeals) pop('New appeal', 'A banned member sent an appeal. Open Staff, then Appeals. It expires in 72 hours.');
   }
-  G.prevReports = r; G.prevPending = p; G.prevReqs = q; G.prevAppeals = ap; G.alertsInit = true;
+  G.prevReports = r; G.prevPending = p; G.prevReqs = q; G.prevAppeals = ap; G.prevNames = nn; G.alertsInit = true;
 }
 
 /* ---------- auth ---------- */
@@ -594,7 +598,7 @@ async function doSignup(f) {
     const b = writeBatch(db);
     b.set(doc(db, 'users', cred.user.uid), { username: name, usernameLower: name.toLowerCase(), role: 'user', status: 'pending', timeoutUntil: null, pfp: null, createdAt: serverTimestamp() });
     b.set(doc(db, 'applications', cred.user.uid), { username: name, reason, createdAt: serverTimestamp() });
-    b.set(doc(db, 'realNames', cred.user.uid), { name: real, username: name, updatedAt: serverTimestamp() });
+    b.set(doc(db, 'realNames', cred.user.uid), { name: real, username: name, status: 'pending', updatedAt: serverTimestamp() });
     await b.commit();
     pop('Application sent', 'Staff will review it within 72 hours. You can log in any time to check.');
   } catch (e) {
@@ -666,7 +670,8 @@ function shell(main) {
   const w = wipeInfo();
   const reportsN = isMod() ? openReports().length : 0;
   const adminN = isAdmin() ? pendingUsers().length + pendingReqs().length + openAppeals().length : 0;
-  const staffN = reportsN + adminN;
+  const namesN = isMod() ? pendingNames().length : 0;
+  const staffN = reportsN + adminN + namesN;
   const nu = newestUser();
   const timeoutBanner = isTimedOut() ? `<div class="stripe">You are timed out until ${esc(stamp(timeoutMs()))}. You can read but not post, reply or bump.</div>` : '';
   return `<header class="top"><div class="gut"><div class="in"><button type="button" class="brand" data-action="home">VEE-FORUMS</button>
@@ -806,7 +811,7 @@ function mySettingsHTML() {
 function profileHTML() {
   const u = G.me;
   return `<h1 class="h1">Your profile</h1><div class="form"><div class="row">${av(u.id, 96)}<div><div style="font-size:30px">${esc(u.username)} ${badge(u.role)}</div><div class="desc">Joined ${dateStr(ms(u.createdAt))}</div></div></div>
-    <div class="row"><span>Your name: ${G.myReal ? esc(G.myReal.name) : 'not set'}</span><button type="button" class="btn sm ghost" data-action="editreal">${G.myReal ? 'Change name' : 'Add name'}</button></div>
+    <div class="row"><span>Your name: ${G.myReal && !nameVoid(G.myReal) ? esc(G.myReal.name) : 'not set'}${G.myReal && G.myReal.status === 'pending' ? ' (waiting for mod review)' : ''}</span><button type="button" class="btn sm ghost" data-action="editreal">${G.myReal ? 'Change name' : 'Add name'}</button></div>
     <div class="fine">${G.settings.showRealNames ? 'Everyone can see this when they hover over your username.' : 'Only admins can see this when they hover over your username.'}</div>
     <span class="label">Profile picture</span>${imgPicker('pfp')}
       <div class="row"><button type="button" class="btn sm" data-action="savepfp">Save picture</button></div>
@@ -824,7 +829,7 @@ function rulesHTML() {
 
 /* ---- staff ---- */
 function staffTabs() {
-  const tabs = [['reports', 'Reports', true, isMod() ? openReports().length : 0], ['requests', 'Warn requests', isAdmin(), isAdmin() ? pendingReqs().length : 0], ['approvals', 'Approvals', isAdmin(), isAdmin() ? pendingUsers().length : 0], ['members', 'Members', true, 0], ['appeals', 'Appeals', isAdmin(), isAdmin() ? openAppeals().length : 0], ['filter', 'Word filter', isAdmin(), 0], ['settings', 'Settings', isAdmin(), 0], ['boards', 'Boards', true, 0], ['log', 'Mod log', true, 0]];
+  const tabs = [['reports', 'Reports', true, isMod() ? openReports().length : 0], ['requests', 'Warn requests', isAdmin(), isAdmin() ? pendingReqs().length : 0], ['approvals', 'Approvals', isAdmin(), isAdmin() ? pendingUsers().length : 0], ['names', 'Names', true, isMod() ? pendingNames().length : 0], ['members', 'Members', true, 0], ['appeals', 'Appeals', isAdmin(), isAdmin() ? openAppeals().length : 0], ['filter', 'Word filter', isAdmin(), 0], ['settings', 'Settings', isAdmin(), 0], ['boards', 'Boards', true, 0], ['log', 'Mod log', true, 0]];
   return `<div class="subtabs">${tabs.filter(t => t[2]).map(t => `<button type="button" class="btn sm ${ui.staffTab === t[0] ? '' : 'ghost'}" data-action="stafftab" data-tab="${t[0]}" aria-pressed="${ui.staffTab === t[0]}">${t[1]}${t[3] ? ' (' + t[3] + ')' : ''}</button>`).join('')}</div>`;
 }
 function reportsHTML() {
@@ -856,6 +861,26 @@ function approvalsHTML() {
     return `<div class="item open"><div class="row"><span class="h2">${esc(u.username)}</span>${realOf(u.id) ? `<span class="fine">(${esc(realOf(u.id))})</span>` : ''}<span class="fine">applied ${ago(ms(u.createdAt))}</span><span class="tag ${over ? 'admin' : 'dim'}">${over ? 'OVERDUE' : 'DUE ' + dateStr(due)}</span></div>
       <div class="q">${a ? esc(a.reason) : '(no reason found)'}</div><div class="row"><button type="button" class="btn sm" data-action="approve" data-uid="${u.id}">Approve</button><button type="button" class="btn sm danger" data-action="deny" data-uid="${u.id}">Deny</button></div></div>`;
   }).join('') : '<div class="empty">Nobody is waiting.</div>'}`;
+}
+function namesHTML() {
+  const p = pendingNames();
+  const done = Object.values(G.realNames).filter(r => r.status === 'denied' || (r.status === 'approved' && !nameVoid(r))).sort((a, b) => ms(b.handledAt || b.updatedAt) - ms(a.handledAt || a.updatedAt)).slice(0, 15);
+  const card = (r, live) => {
+    const u = userOf(r.id), can = u && r.id !== G.user.uid && actOn(u.role);
+    return `<div class="item ${live ? 'open' : ''}"><div class="row"><span class="h2">${esc(r.name)}</span><span class="fine">username ${esc(r.username || (u && u.username) || '')}</span><span class="fine">${ago(ms(r.updatedAt))}</span>${live ? '' : `<span class="tag ${r.status === 'denied' ? 'admin' : 'dim'}">${esc(r.status.toUpperCase())}</span>`}</div>
+      ${live ? (can ? `<div class="row"><button type="button" class="btn sm" data-action="namey" data-uid="${esc(r.id)}">Approve</button><button type="button" class="btn sm danger" data-action="nameno" data-uid="${esc(r.id)}">Deny</button></div>` : '<div class="fine">You cannot act on this member.</div>') : (r.handledByName ? `<div class="fine">by ${esc(r.handledByName)}</div>` : '')}</div>`;
+  };
+  return `<span class="label">${p.length} names waiting for review</span>${p.length ? p.map(r => card(r, true)).join('') : '<div class="empty">No names waiting.</div>'}<div class="fine">Members can keep using the forum while their name waits. Denying a name asks the member to enter a new one, which sends a new request here.</div>${done.length ? `<span class="label">Recently handled</span>${done.map(r => card(r, false)).join('')}` : ''}`;
+}
+async function decideName(uid, approve) {
+  const r = G.realNames[uid], u = userOf(uid); if (!r || !u) return;
+  try {
+    const b = writeBatch(db);
+    b.update(doc(db, 'realNames', uid), { status: approve ? 'approved' : 'denied', handledBy: G.user.uid, handledByName: G.me.username, handledAt: serverTimestamp() });
+    logDoc(b, approve ? 'nameApprove' : 'nameDeny', u, { detail: (approve ? 'Name approved: ' : 'Name denied: ') + r.name });
+    await b.commit();
+    if (!approve) pop('Denied', u.username + ' will be asked for a new name.');
+  } catch (e) { pop('Could not save', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
 }
 function membersHTML() {
   const list = Object.values(G.users).filter(u => u.id !== G.user.uid && u.role !== 'owner' && (u.status === 'approved' || u.status === 'banned')).sort((a, b) => rk(b.role) - rk(a.role) || a.username.localeCompare(b.username));
@@ -895,7 +920,9 @@ function settingsHTML() {
   return `<span class="label">Settings</span><div class="box" style="max-width:760px"><span class="h2">Real names</span>
     <span>Members type their name when they sign up (existing members are asked the next time they log in). It is visible to <span class="${on ? 'warn' : ''}">${on ? 'everyone' : 'admins only'}</span> when hovering over a username.</span>
     <div class="row"><button type="button" class="btn sm ${on ? 'danger' : ''}" data-action="togglereal">${on ? 'Hide from members (admins only)' : 'Show to everyone'}</button></div>
-    <div class="fine">Turning this on shows every member's name to every approved member. Hover works with a mouse; touch screens have no hover.</div></div>`;
+    <div class="fine">Turning this on shows every member's name to every approved member. Hover works with a mouse; touch screens have no hover.</div></div>
+    <div class="box red" style="max-width:760px"><span class="h2">Reset all names</span><span>Clears every member's name. Everyone is asked to type their name again the next time the site is open, and each new name goes to mods for review.</span>
+    <div class="row"><button type="button" class="btn sm danger" data-action="resetnames">Reset everyone's name</button></div></div>`;
 }
 function boardsHTML() {
   const mine = G.boards;
@@ -918,7 +945,7 @@ function staffHTML() {
   if (ui.staffTab === 'requests' && !isAdmin()) ui.staffTab = 'reports';
   if (ui.staffTab === 'approvals' && !isAdmin()) ui.staffTab = 'reports';
   if ((ui.staffTab === 'appeals' || ui.staffTab === 'filter' || ui.staffTab === 'settings') && !isAdmin()) ui.staffTab = 'reports';
-  const body = { reports: reportsHTML, requests: requestsHTML, approvals: approvalsHTML, members: membersHTML, boards: boardsHTML, appeals: appealsHTML, filter: filterHTML, settings: settingsHTML, log: logHTML }[ui.staffTab]();
+  const body = { reports: reportsHTML, names: namesHTML, requests: requestsHTML, approvals: approvalsHTML, members: membersHTML, boards: boardsHTML, appeals: appealsHTML, filter: filterHTML, settings: settingsHTML, log: logHTML }[ui.staffTab]();
   return `<h1 class="h1">Staff</h1>${staffTabs()}${isAdmin() ? `<div class="row"><button type="button" class="btn sm ghost" data-action="purge">Clean up old data</button><span class="fine">This also runs by itself when an admin opens the site. It removes last month's posts, threads past the newest ${MAX_THREADS}, and finished reports and requests older than 30 days.</span></div>` : ''}${body}`;
 }
 
@@ -1100,8 +1127,10 @@ function renderModal() {
   if (!M) { closeModal(); return; }
   $modal.hidden = false;
   if (M.kind === 'realname') {
-    const cur = G.myReal ? G.myReal.name : '';
-    $modal.innerHTML = `<form class="modal" data-form="realname"><h2 class="h1" style="font-size:22px">${M.first ? 'What is your name?' : 'Your name'}</h2>
+    const cur = G.myReal && !nameVoid(G.myReal) ? G.myReal.name : '';
+    $modal.innerHTML = `<form class="modal" data-form="realname"><h2 class="h1" style="font-size:22px">${M.denied ? 'Your name was denied' : M.reset ? 'Enter your name again' : M.first ? 'What is your name?' : 'Your name'}</h2>
+      ${M.reset ? '<div class="warn">Staff reset everyone\'s names. Type your name again. It will be sent to the mods for review, and you can keep using the forum meanwhile.</div>' : ''}
+      ${M.denied ? '<div class="warn">A mod denied the name you entered. Type a new one. It will be sent to the mods again, and you can keep using the forum meanwhile.</div>' : ''}
       <div class="fine">Admins can see this when they hover over your username. ${G.settings.showRealNames ? 'Right now it is visible to everyone.' : 'Admins may switch it to everyone later.'}</div>
       <label class="label" for="m-real">Name</label><input id="m-real" type="text" style="min-height:0" maxlength="40" required value="${esc(cur)}" autocomplete="name">
       <div class="row"><button class="btn" type="submit">Save</button>${M.first ? '' : '<button type="button" class="btn ghost" data-action="skipreal">Cancel</button>'}</div></form>`;
@@ -1184,9 +1213,19 @@ async function saveRealName() {
   const name = document.getElementById('m-real').value.trim().replace(/\s+/g, ' ');
   if (name.length < 2 || name.length > 40) return pop('Check your name', 'Use 2 to 40 characters.', 'bad');
   try {
-    await setDoc(doc(db, 'realNames', G.user.uid), { name, username: G.me.username, updatedAt: serverTimestamp() });
-    closeModal(); pop('Saved', 'Your name was saved.');
+    await setDoc(doc(db, 'realNames', G.user.uid), { name, username: G.me.username, status: 'pending', updatedAt: serverTimestamp() });
+    closeModal(); pop('Saved', 'Your name was sent to the mods for review. You can keep using the forum. If it is denied, you will be asked again.');
   } catch (e) { pop('Could not save', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
+}
+async function resetNames() {
+  if (!confirm("Reset every member's name? Everyone will be asked to enter it again.")) return;
+  try {
+    const b = writeBatch(db);
+    b.set(doc(db, 'config', 'settings'), { nameResetAt: serverTimestamp(), updatedBy: G.user.uid, updatedByName: G.me.username, updatedAt: serverTimestamp() }, { merge: true });
+    logDoc(b, 'settings', null, { detail: 'All names reset' });
+    await b.commit();
+    pop('Names reset', 'Everyone will be asked for their name again.');
+  } catch (e) { pop('Could not reset', 'Something went wrong (' + getErr(e) + ').', 'bad'); }
 }
 async function toggleReal() {
   const v = !G.settings.showRealNames;
@@ -1505,9 +1544,12 @@ document.addEventListener('click', async e => {
     case 'rmboard': removeBoard(d.id); break;
     case 'setrole': { const sel = document.getElementById('role-' + d.uid); simpleUserUpdate(d.uid, { role: sel.value }, 'role', 'Rank set to ' + sel.options[sel.selectedIndex].text); break; }
     case 'warnnow': openWarnNow(d.uid); break;
+    case 'namey': decideName(d.uid, true); break;
+    case 'nameno': decideName(d.uid, false); break;
     case 'editreal': openModal({ kind: 'realname', first: false }); break;
     case 'skipreal': closeModal(); break;
     case 'togglereal': toggleReal(); break;
+    case 'resetnames': resetNames(); break;
     case 'purge': try { const n = (await purgeOld()) + (await tidy()); pop('Cleaned up', n + (n === 1 ? ' old item was' : ' old items were') + ' removed.'); } catch (err) { pop('Could not clean up', getErr(err), 'bad'); } break;
   }
 });
